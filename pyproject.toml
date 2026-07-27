@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portfolio-construction"
+version = "0.1.0"
+description = "Toolkit for portfolio optimization, backtesting, risk analysis and market data retrieval"
+readme = "USAGE.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "requests",
+    "yfinance",
+    "aiohttp",
+    "aiolimiter",
+    "python-dateutil",
+    "openpyxl",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["portfolio_construction*"]
