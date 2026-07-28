@@ -450,18 +450,27 @@ def test_historical_fx_url_carries_env_key(monkeypatch):
 
     class _FakeReq:
         def json(self):
-            return {"Time Series FX (Daily)": {}}
+            return {
+                "Time Series FX (Daily)": {
+                    "2024-01-02": {
+                        "1. open": "1.10",
+                        "2. high": "1.20",
+                        "3. low": "1.00",
+                        "4. close": "1.15",
+                    }
+                }
+            }
 
     def fake_get(url):
         captured["url"] = url
         return _FakeReq()
 
     monkeypatch.setattr(ma.requests, "get", fake_get)
-    with pytest.raises(Exception):
-        # empty payload makes the downstream frame handling fail; we only care
-        # that the key reached the URL
-        ma.historical_fx("EUR", "USD")
+    frame = ma.historical_fx("EUR", "USD")
+
     assert "apikey=av-test-key" in captured["url"]
+    assert list(frame.columns) == ["Open", "High", "Low", "Close"]
+    assert frame["Close"].iloc[0] == 1.15
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
