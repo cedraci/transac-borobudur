@@ -83,9 +83,9 @@ setx EOD_API_KEY "your-token-here"
 export EOD_API_KEY="your-token-here"
 ```
 
-If `EOD_API_KEY` isn't set, importing `async_eod.py` will raise a `KeyError`
-immediately (it reads the env var at import time). `eod_api.py` reads it the
-same way, so the same rule applies.
+Both modules import fine without the key set. The key is read when a request is
+actually built, so a missing key raises a `RuntimeError` naming `EOD_API_KEY`
+at call time rather than at import.
 
 ---
 

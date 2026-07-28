@@ -11,7 +11,21 @@ import pandas as pd
 import os
 import platform
 
-EOD_API_KEY = os.environ["EOD_API_KEY"]
+EOD_API_KEY = os.environ.get("EOD_API_KEY", "")
+
+
+def _api_key() -> str:
+    """Read the EOD API key at call time.
+
+    Reading lazily (rather than at import) lets the UI import this module and
+    report a missing key as a disabled action instead of crashing at startup.
+    """
+    key = os.environ.get("EOD_API_KEY", "")
+    if not key:
+        raise RuntimeError(
+            "EOD_API_KEY is not set - required to call EOD Historical Data"
+        )
+    return key
 
 if platform.system()=='Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -48,7 +62,7 @@ async def async_req_json(url, semaphore):
 ### EOD REALTIME (DELAYED) MULTI TICKERS REQUEST
 ###
 def multi_tickers_delayed_url(tickers):
-    return f"https://eodhistoricaldata.com/api/real-time/{tickers[0]}?api_token={EOD_API_KEY}&fmt=json{('&s=' + ','.join(tickers[1:])) if len(tickers) > 1 else ''}"
+    return f"https://eodhistoricaldata.com/api/real-time/{tickers[0]}?api_token={_api_key()}&fmt=json{('&s=' + ','.join(tickers[1:])) if len(tickers) > 1 else ''}"
 
 
 async def async_get_realtime(tickers, semaphore):
@@ -99,12 +113,12 @@ def get_realtime(tickers):
 ### EOD END OF DAY SINGLE TICKER REQUEST (INCLUDING OFFSET TO GET LAST KNOWN PRICE)
 ###
 def eod_url(ticker, query_date):
-    return f'https://eodhistoricaldata.com/api/eod/{ticker}?api_token={EOD_API_KEY}&fmt=json&from={query_date.strftime("%Y-%m-%d")}&to={query_date.strftime("%Y-%m-%d")}&period=d'
+    return f'https://eodhistoricaldata.com/api/eod/{ticker}?api_token={_api_key()}&fmt=json&from={query_date.strftime("%Y-%m-%d")}&to={query_date.strftime("%Y-%m-%d")}&period=d'
 
 
 def eod_url_offset(ticker, query_date, offset):
     offset_date = query_date - relativedelta(days=offset)
-    return f'https://eodhistoricaldata.com/api/eod/{ticker}?api_token={EOD_API_KEY}&fmt=json&from={offset_date.strftime("%Y-%m-%d")}&to={query_date.strftime("%Y-%m-%d")}&period=d'
+    return f'https://eodhistoricaldata.com/api/eod/{ticker}?api_token={_api_key()}&fmt=json&from={offset_date.strftime("%Y-%m-%d")}&to={query_date.strftime("%Y-%m-%d")}&period=d'
 
 
 async def async_get_eod(ticker, date, semaphore):
@@ -160,7 +174,7 @@ def get_historical(tickers, date):
 ### EOD END OF DAY (FULL PRICE HISTORY) REQUEST
 ###
 def full_history_url(ticker):
-    return f"https://eodhistoricaldata.com/api/eod/{ticker}?api_token={EOD_API_KEY}&fmt=json&from=1990-01-01&to={datetime.datetime.today().strftime('%y-%m-%d')}&period=d"
+    return f"https://eodhistoricaldata.com/api/eod/{ticker}?api_token={_api_key()}&fmt=json&from=1990-01-01&to={datetime.datetime.today().strftime('%y-%m-%d')}&period=d"
 
 
 async def async_get_full_history(ticker, semaphore):
@@ -209,7 +223,7 @@ def get_full_history(tickers):
 def sovereign_bonds_url(ticker, strDate):
     return (
         "https://eodhistoricaldata.com/api/eod/%s?from=%s&to=%s&api_token=%s&fmt=json"
-        % (ticker, strDate, strDate, EOD_API_KEY)
+        % (ticker, strDate, strDate, _api_key())
     )
 
 

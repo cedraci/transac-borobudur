@@ -1,6 +1,6 @@
-"""Smoke tests: eod_api.py and async_eod.py read EOD_API_KEY from the environment
-at import time, so we just need to confirm importing them (with a dummy token
-set) doesn't blow up - no real network calls are made here.
+"""Smoke tests: importing eod_api.py and async_eod.py must not blow up, and no
+real network calls are made here. Key handling itself is covered by
+tests/test_eod_key_handling.py.
 """
 
 import importlib
