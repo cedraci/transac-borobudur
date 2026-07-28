@@ -166,7 +166,7 @@ def last_prices(token, ticker):
 
     # If the first try doesn't work, extract the last knwon price
     if not isinstance(data, float):
-        data = recursive_adjClose_atDate(tok, ticker, strDate)
+        data = recursive_adjClose_atDate(token, ticker, strDate)
 
     return data
 
@@ -181,12 +181,16 @@ def get_SovBond(token, ticker, strDate):
 def last_prices_universe(token, tickers):
     """ extract real time prices (delayed 15 min) for a list of tickers """
     tmp = ("&s=" + ','.join(tickers[1:])) if len(tickers) > 1 else ""
-    url = f"https://eodhistoricaldata.com/api/real-time/{tickers[0]}?api_token={token}&fmt=json{tmp}" 
-    
+    url = f"https://eodhistoricaldata.com/api/real-time/{tickers[0]}?api_token={token}&fmt=json{tmp}"
+
     response = urllib.request.urlopen(url)
     data = json.loads(response.read())
-    df = pd.DataFrame().from_dict(data).values
-    return df['close']
+
+    if isinstance(data, dict):  # single-ticker requests return a bare object
+        data = [data]
+
+    df = pd.DataFrame(data)
+    return df.set_index("code")["close"].astype(float)
 
 
 def fixed_income_etf(tok, ticker):

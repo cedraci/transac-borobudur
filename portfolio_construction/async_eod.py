@@ -174,7 +174,7 @@ def get_historical(tickers, date):
 ### EOD END OF DAY (FULL PRICE HISTORY) REQUEST
 ###
 def full_history_url(ticker):
-    return f"https://eodhistoricaldata.com/api/eod/{ticker}?api_token={_api_key()}&fmt=json&from=1990-01-01&to={datetime.datetime.today().strftime('%y-%m-%d')}&period=d"
+    return f"https://eodhistoricaldata.com/api/eod/{ticker}?api_token={_api_key()}&fmt=json&from=1990-01-01&to={datetime.datetime.today().strftime('%Y-%m-%d')}&period=d"
 
 
 async def async_get_full_history(ticker, semaphore):
@@ -244,34 +244,46 @@ def sovereign_bonds_tickers(countries, tenors):
     return tickers
 
 
+def _assemble_sovereign_rates(results):
+    """Build the rates frame from per-ticker results, skipping missing data.
+
+    async_sovereign_bond returns None when the API has no data for a ticker,
+    so the results list may contain None entries.
+    """
+    rates = {}
+    for elt in results:
+        if elt:
+            rates.update(elt)
+
+    if not rates:
+        return pd.DataFrame(columns=["Rates"])
+
+    df_rates = pd.DataFrame.from_dict(rates, orient="index")
+    df_rates.columns = ["Rates"]
+    return df_rates
+
+
 async def async_sovereign_bonds_multi(countries, tenors, date):
     semaphore = asyncio.Semaphore(value=concurrent_count)
     tickers = sovereign_bonds_tickers(countries, tenors)
-    tmp = dict()
-    result = await asyncio.gather(
+    return await asyncio.gather(
         *[async_sovereign_bond(ticker, date, semaphore) for ticker in tickers]
     )
-    for elt in result:
-        tmp.update(elt)
-    return tmp
 
 
 def sovereign_bonds(countries, tenors, strDate):
-    """_summary_
+    """Get close yields for sovereign bonds.
 
     Args:
-        countries (_type_): _description_
-        tenors (_type_): _description_
-        strDate (_type_): _description_
+        countries (list): ISO country codes, e.g. ["US", "FR"]
+        tenors (list): tenors in years, e.g. [5, 10]
+        strDate (str): query date as "YYYY-MM-DD"
 
     Returns:
-        _type_: _description_
+        pd.DataFrame: indexed by bond ticker with a single "Rates" column.
     """
-    result = asyncio.run(async_sovereign_bonds_multi(countries, tenors, strDate))
-    df_rates = pd.DataFrame().from_dict(result, orient="index")
-    df_rates.columns = ["Rates"]
-    # result = list(itertools.chain.from_iterable(result))
-    return df_rates
+    results = asyncio.run(async_sovereign_bonds_multi(countries, tenors, strDate))
+    return _assemble_sovereign_rates(results)
 
 
 if __name__ == "__main__":
