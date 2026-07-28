@@ -5,7 +5,7 @@ import os
 import calendar
 import datetime
 
-tok = os.environ['EOD_TOKEN']
+tok = os.environ['EOD_API_KEY']
 
 """
 i.e fundamentals("MSFT.US", tok, filter="General::CurrencyName,General::ISIN")

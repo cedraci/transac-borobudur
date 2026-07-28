@@ -68,22 +68,22 @@ is this one.
 
 `eod_api.py` and `async_eod.py` both talk to
 [EOD Historical Data](https://eodhistoricaldata.com/) and require an API
-token, read from the `EOD_TOKEN` environment variable:
+token, read from the `EOD_API_KEY` environment variable:
 
 ```powershell
 # PowerShell, current session only
-$env:EOD_TOKEN = "your-token-here"
+$env:EOD_API_KEY = "your-token-here"
 
 # persist across sessions (Windows)
-setx EOD_TOKEN "your-token-here"
+setx EOD_API_KEY "your-token-here"
 ```
 
 ```bash
 # bash
-export EOD_TOKEN="your-token-here"
+export EOD_API_KEY="your-token-here"
 ```
 
-If `EOD_TOKEN` isn't set, importing `async_eod.py` will raise a `KeyError`
+If `EOD_API_KEY` isn't set, importing `async_eod.py` will raise a `KeyError`
 immediately (it reads the env var at import time). `eod_api.py` reads it the
 same way, so the same rule applies.
 
@@ -313,7 +313,7 @@ universe of tickers, fast** → `async_eod.py`.
 import portfolio_construction.eod_api as eod
 import os
 
-tok = os.environ["EOD_TOKEN"]
+tok = os.environ["EOD_API_KEY"]
 divs = eod.dividends(tok, "AAPL.US")
 earnings = eod.earnings_calendar(tok, "2024-01-01", "2024-12-31")
 prices_df = eod.adjusted_prices(tok, ["AAPL.US", "MSFT.US", "GOOG.US"])
@@ -323,7 +323,7 @@ prices_df = eod.adjusted_prices(tok, ["AAPL.US", "MSFT.US", "GOOG.US"])
 import portfolio_construction.async_eod as async_eod
 import datetime
 
-# EOD_TOKEN is read automatically from the environment inside this module
+# EOD_API_KEY is read automatically from the environment inside this module
 histories = async_eod.get_full_history(["AAPL.US", "MSFT.US", "GOOG.US"])
 today_prices = async_eod.get_historical(["AAPL.US", "MSFT.US"], datetime.datetime.today())
 yields = async_eod.sovereign_bonds(["US", "FR", "DE"], [2, 5, 10], "2024-06-30")

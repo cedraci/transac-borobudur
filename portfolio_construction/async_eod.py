@@ -11,7 +11,7 @@ import pandas as pd
 import os
 import platform
 
-EOD_API_KEY = os.environ["EOD_TOKEN"]
+EOD_API_KEY = os.environ["EOD_API_KEY"]
 
 if platform.system()=='Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
