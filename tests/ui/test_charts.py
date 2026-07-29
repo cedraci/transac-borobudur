@@ -69,10 +69,18 @@ def test_drawdown_figure_is_a_filled_area_and_never_positive():
     assert max(fig.data[0].y) <= 0
 
 
-def test_calendar_bar_figure_has_a_bar_per_period():
+def test_calendar_bar_figure_uses_the_last_column_for_bar_heights():
     from portfolio_ui.charts import calendar_bar_figure
 
-    calendar = pd.DataFrame({"Performance": [0.10, -0.05]}, index=[2020, 2021])
+    # calendar_performances returns a wide frame whose LAST column is the
+    # period total; earlier columns are the individual months.
+    calendar = pd.DataFrame(
+        {"Jan": [0.01, 0.02], "Feb": [0.03, 0.04], "Total": [0.10, -0.05]},
+        index=[2020, 2021],
+    )
     fig = calendar_bar_figure(calendar)
+
     assert len(fig.data) == 1
     assert list(fig.data[0].x) == [2020, 2021]
+    # would fail against .iloc[:, 0], which would give the Jan column
+    assert list(fig.data[0].y) == [0.10, -0.05]
