@@ -3404,7 +3404,10 @@ git commit -m "feat: add Data page with source-gated fetch, upload and persisten
 - [ ] `.venv/Scripts/python.exe -m streamlit run portfolio_ui/app.py` starts with no source selected and no API key set.
 - [ ] Every step in Task 13 Step 7's manual checklist verified.
 - [ ] No `streamlit` or `plotly` import exists anywhere under `portfolio_construction/`.
-- [ ] `KO6RI8AXUX0HDGC2` appears nowhere in the working tree.
+- [ ] `KO6RI8AXUX0HDGC2` appears nowhere under `portfolio_construction/` or in
+      `USAGE.md`. It necessarily remains in `tests/test_market_access_key.py`,
+      which asserts its absence from the module source, and in this plan
+      document.
 
 ## What this plan does not cover
 
