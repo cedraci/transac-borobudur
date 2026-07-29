@@ -100,7 +100,7 @@ def adjusted_prices(tok, tickers):
             all = pd.merge_asof(all, sec_ts, left_index=True, right_index=True, tolerance=pd.Timedelta('5 day'))
 
     all.columns = col_titles
-    all.index = pd.to_datetime(all.index, infer_datetime_format=True)
+    all.index = pd.to_datetime(all.index)
     #print('{}/{} extracted'.format(len(tmp), sec_nb))
     return all
 
@@ -125,7 +125,7 @@ def download_universe(tok, tickers):
         
     all = pd.concat(tmp, axis=1, join="inner")
     all.columns = tickers
-    all.index = pd.to_datetime(all.index, infer_datetime_format=True)
+    all.index = pd.to_datetime(all.index)
     return all
 
 def adjClose_atDate(token, ticker, strDate):

@@ -65,6 +65,37 @@ def test_last_prices_universe_handles_single_ticker_dict_payload(monkeypatch):
     assert result["AAPL.US"] == 190.5
 
 
+def test_adjusted_prices_returns_a_datetime_indexed_frame(monkeypatch):
+    # infer_datetime_format was removed in pandas 3, so this call raised a
+    # TypeError for every payload regardless of its contents.
+    payload = [
+        {"date": "2024-01-02", "adjusted_close": 100.0},
+        {"date": "2024-01-03", "adjusted_close": 101.0},
+    ]
+    monkeypatch.setattr(
+        eod_api.urllib.request, "urlopen", lambda url: _FakeResponse(payload)
+    )
+    out = eod_api.adjusted_prices("dummy-token", ["AAPL.US"])
+    assert isinstance(out.index, pd.DatetimeIndex)
+    assert list(out.columns) == ["AAPL.US"]
+    assert len(out) == 2
+    assert out.index[0] == pd.Timestamp("2024-01-02")
+
+
+def test_download_universe_returns_a_datetime_indexed_frame(monkeypatch):
+    payload = [
+        {"date": "2024-01-02", "adjusted_close": 100.0},
+        {"date": "2024-01-03", "adjusted_close": 101.0},
+    ]
+    monkeypatch.setattr(
+        eod_api.urllib.request, "urlopen", lambda url: _FakeResponse(payload)
+    )
+    out = eod_api.download_universe("dummy-token", ["AAPL.US"])
+    assert isinstance(out.index, pd.DatetimeIndex)
+    assert list(out.columns) == ["AAPL.US"]
+    assert len(out) == 2
+
+
 def test_last_prices_passes_its_own_token_argument(monkeypatch):
     captured = {}
 
