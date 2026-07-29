@@ -2753,6 +2753,11 @@ git commit -m "feat: add plotly chart builders"
 
 ### Task 12: App shell — navigation, sidebar and the source gate
 
+> **Executed together with Task 13 as a single unit.** `app.py` imports the Data
+> page that Task 13 creates, so neither half is independently runnable. Do all of
+> Task 12's steps, then all of Task 13's, before the task is considered done.
+> Two commits, one review gate.
+
 **Files:**
 - Create: `portfolio_ui/app.py`
 - Create: `portfolio_ui/sidebar.py`
@@ -2986,7 +2991,9 @@ def main() -> None:
 main()
 ```
 
-`data_page` does not exist yet — Task 13 creates it. The app will not start until then; that is expected.
+`data_page` comes from Task 13, which you implement immediately after this step
+as part of the same task. Do not stop here to verify the app starts — it cannot
+until Task 13 Step 4 creates `views/data_page.py`.
 
 - [ ] **Step 6: Run the sidebar tests to verify they pass**
 
@@ -3003,6 +3010,9 @@ git commit -m "feat: add app shell, sidebar source gate and page stubs"
 ---
 
 ### Task 13: The Data page
+
+> **Second half of Task 12's unit** — see the note there. Continue directly from
+> Task 12 Step 7 without a separate review gate.
 
 **Files:**
 - Create: `portfolio_ui/views/data_page.py`

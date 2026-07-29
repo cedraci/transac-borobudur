@@ -25,6 +25,14 @@ to portfolio theory or to this specific codebase. Every section explains the
 │   ├── market_access.py               Yahoo Finance / AlphaVantage data + dividend/split adjustments
 │   ├── eod_api.py                     EOD Historical Data client — fundamentals, one ticker at a time
 │   └── async_eod.py                   EOD Historical Data client — prices, many tickers in parallel
+├── portfolio_ui/                      the Streamlit app — see section 3
+│   ├── app.py                         entry point: `streamlit run portfolio_ui/app.py`
+│   ├── sources/                       the four data sources behind one common interface
+│   ├── dataset.py                     the active dataset shared across pages, and its persistence
+│   ├── state.py                       session-state accessors (no Streamlit import — testable)
+│   ├── guards.py                      input parsing and the "why is this disabled" logic
+│   ├── charts.py                      plotly figure builders
+│   └── views/                         one module per page
 └── examples/
     ├── asset_allocation_plot.py       runnable example: efficient frontier sweep + plot
     └── *.xlsx                         sample data used by the example
