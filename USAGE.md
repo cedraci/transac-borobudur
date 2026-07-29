@@ -87,6 +87,16 @@ Both modules import fine without the key set. The key is read when a request is
 actually built, so a missing key raises a `RuntimeError` naming `EOD_API_KEY`
 at call time rather than at import.
 
+`market_access.py` uses AlphaVantage for its `historical_fx`,
+`alphaVantage_historical_data` and `alphaVantage_company_snapshot` helpers, and
+reads `ALPHAVANTAGE_API_KEY` the same way:
+
+```powershell
+$env:ALPHAVANTAGE_API_KEY = "your-key-here"
+```
+
+The yfinance-backed helpers in that module need no key.
+
 ---
 
 ## 3. Key concepts, explained simply
@@ -289,10 +299,9 @@ snap = ma.yahooFinance_company_snapshot("AAPL")     # sector, country, currency.
 clean = ma.clean_data(histo)                        # adjust for dividends/splits, drop raw columns
 ```
 
-⚠️ The AlphaVantage functions have a hardcoded demo API key
-(`KO6RI8AXUX0HDGC2`) — replace it with your own free key from
-alphavantage.co before relying on this in anything real; the shared demo
-key is heavily rate-limited.
+The AlphaVantage functions require the `ALPHAVANTAGE_API_KEY` environment
+variable (see the "API key" section above) — get your own free key from
+alphavantage.co; a missing key raises a `RuntimeError` at call time.
 
 ### `portfolio_construction.eod_api` vs. `portfolio_construction.async_eod`
 
@@ -353,8 +362,8 @@ instead of just plotting.
 
 ## 6. Known limitations / things to double check before relying on this
 
-- `market_access.py`'s AlphaVantage calls use a shared demo API key — get
-  your own key for anything beyond a quick test.
+- `market_access.py`'s AlphaVantage calls require your own `ALPHAVANTAGE_API_KEY`
+  (free tier, rate-limited) — see the "API key" section above.
 - The optimizers use `scipy.optimize.minimize(method="SLSQP")`, which finds
   a *local* optimum — for objectives with many equivalent solutions (like
   `equal_risk_contribution`), reruns from different starting weights can

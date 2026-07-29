@@ -2,15 +2,38 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
+import os
+
+
+def _require_alphavantage_key() -> str:
+    """Read the AlphaVantage key at call time.
+
+    Reading lazily keeps the yfinance-backed helpers in this module usable
+    without an AlphaVantage account.
+    """
+    key = os.environ.get("ALPHAVANTAGE_API_KEY", "")
+    if not key:
+        raise RuntimeError(
+            "ALPHAVANTAGE_API_KEY is not set - required for AlphaVantage endpoints"
+        )
+    return key
+
 
 def historical_adj_for_symbol(ticker):
-    url = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + ticker + "&outputsize=full&apikey=KO6RI8AXUX0HDGC2"
+    url = (
+        "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED"
+        "&symbol=" + ticker + "&outputsize=full&apikey=" + _require_alphavantage_key()
+    )
     req = requests.get(url)
     brut = req.json()
-    return brut 
+    return brut
 
 def historical_fx(currency1, currency2):
-    url = 'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=' + currency1 + '&to_symbol=' + currency2 + '&outputsize=full&apikey=KO6RI8AXUX0HDGC2'
+    url = (
+        "https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=" + currency1
+        + "&to_symbol=" + currency2
+        + "&outputsize=full&apikey=" + _require_alphavantage_key()
+    )
     req = requests.get(url)
     brut = req.json()
     df_data = pd.DataFrame(brut["Time Series FX (Daily)"])
@@ -37,7 +60,10 @@ def alphaVantage_historical_data(ticker):
 
 # Semble fonctionner uniquement pour les valeurs cotees aux US.
 def alphaVantage_company_snapshot(ticker):
-    url = "https://www.alphavantage.co/query?function=OVERVIEW&symbol=" + ticker + "&apikey=KO6RI8AXUX0HDGC2"
+    url = (
+        "https://www.alphavantage.co/query?function=OVERVIEW&symbol=" + ticker
+        + "&apikey=" + _require_alphavantage_key()
+    )
     req = requests.get(url)
     brut = req.json()
     return brut 

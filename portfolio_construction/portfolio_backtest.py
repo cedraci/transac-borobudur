@@ -9,10 +9,12 @@ from scipy.stats import linregress
 Rebalancing frequency codes used by `RebalancingCalendar.method`:
 
 eom : end of month
-som : start of month
 eoq : end of quarter
-dow : day of week (every week)
-bim : bi-monthly (eow)
+eos : end of semester (Q2 and Q4)
+eow : end of week
+bim : bi-monthly (every other week)
+
+Any other value falls back to end of year.
 """
 
 
