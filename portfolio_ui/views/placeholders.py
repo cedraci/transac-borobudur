@@ -6,7 +6,6 @@ Each states what it will do so the navigation shell is complete and honest.
 import streamlit as st
 
 _COMING = {
-    "Analysis": "Performance statistics, drawdown episodes and calendar returns.",
     "Risk": "VaR, expected shortfall and Monte Carlo simulation.",
     "Optimization": "Eight optimization objectives, bounds and covariance estimators.",
     "Backtest": "Rebalanced backtests with momentum universe selection.",
@@ -17,10 +16,6 @@ _COMING = {
 def _stub(title: str) -> None:
     st.title(title)
     st.info(f"Not built yet. Planned: {_COMING[title]}")
-
-
-def analysis_page():
-    _stub("Analysis")
 
 
 def risk_page():

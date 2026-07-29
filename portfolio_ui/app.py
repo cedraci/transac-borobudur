@@ -3,9 +3,9 @@
 import streamlit as st
 
 from portfolio_ui import sidebar
+from portfolio_ui.views.analysis_page import analysis_page
 from portfolio_ui.views.data_page import data_page
 from portfolio_ui.views.placeholders import (
-    analysis_page,
     backtest_page,
     market_data_page,
     optimization_page,
