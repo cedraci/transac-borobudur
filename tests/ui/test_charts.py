@@ -84,3 +84,15 @@ def test_calendar_bar_figure_uses_the_last_column_for_bar_heights():
     assert list(fig.data[0].x) == [2020, 2021]
     # would fail against .iloc[:, 0], which would give the Jan column
     assert list(fig.data[0].y) == [0.10, -0.05]
+
+
+def test_simulation_fan_figure_summarizes_rather_than_drawing_every_path():
+    from portfolio_ui.charts import simulation_fan_figure
+
+    paths = pd.DataFrame(
+        {f"path_{i}": [100.0, 100.0 + i, 100.0 + 2 * i] for i in range(500)}
+    )
+    fig = simulation_fan_figure(paths, title="Simulated NAV")
+    # median + two band edges, never 500 traces
+    assert len(fig.data) <= 3
+    assert fig.layout.title.text == "Simulated NAV"

@@ -9,8 +9,8 @@ from portfolio_ui.views.placeholders import (
     backtest_page,
     market_data_page,
     optimization_page,
-    risk_page,
 )
+from portfolio_ui.views.risk_page import risk_page
 from portfolio_ui.state import init_state
 
 

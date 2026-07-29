@@ -96,3 +96,34 @@ def calendar_bar_figure(calendar: pd.DataFrame) -> go.Figure:
         margin=dict(l=40, r=20, t=60, b=40),
     )
     return fig
+
+
+def simulation_fan_figure(paths: pd.DataFrame, title: str) -> go.Figure:
+    """Median path with a 5th-95th percentile band.
+
+    Deliberately summarizes: drawing 10 000 individual traces would make the
+    page unusable and tell the reader less, not more.
+    """
+    steps = list(range(len(paths)))
+    low = paths.quantile(0.05, axis=1)
+    high = paths.quantile(0.95, axis=1)
+    median = paths.median(axis=1)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=steps, y=high, mode="lines", name="95th percentile",
+                   line=dict(width=0), showlegend=False)
+    )
+    fig.add_trace(
+        go.Scatter(x=steps, y=low, mode="lines", name="5th-95th percentile",
+                   line=dict(width=0), fill="tonexty")
+    )
+    fig.add_trace(go.Scatter(x=steps, y=median, mode="lines", name="Median"))
+    fig.update_layout(
+        title=title,
+        xaxis_title="Days ahead",
+        yaxis_title="Simulated value",
+        hovermode="x unified",
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    return fig
