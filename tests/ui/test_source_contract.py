@@ -8,7 +8,11 @@ import datetime as dt
 import pandas as pd
 import pytest
 
-from portfolio_ui.sources.base import Capability, PriceSource
+from portfolio_ui.sources.base import (
+    Capability,
+    CapabilityNotSupported,
+    PriceSource,
+)
 from portfolio_ui.sources.local_source import LocalSource
 from tests.ui.test_async_eod_source import FakeAsyncEodClient
 from tests.ui.test_eod_api_source import FakeEodApiClient
@@ -57,10 +61,15 @@ def test_source_satisfies_the_protocol(factory):
 @pytest.mark.parametrize("factory", ALL_SOURCES)
 def test_price_history_contract(factory):
     source = factory()
-    if not source.supports(Capability.PRICE_HISTORY):
-        pytest.skip(f"{source.name} does not support price history")
-
     tickers = ["AAPL", "MSFT"] if source.name == "market_access" else TICKERS
+
+    # An undeclared capability must raise, not misbehave: that is the half of
+    # the mechanism the UI's gating relies on.
+    if not source.supports(Capability.PRICE_HISTORY):
+        with pytest.raises(CapabilityNotSupported):
+            source.price_history(tickers, START, END)
+        return
+
     out = source.price_history(tickers, START, END)
 
     assert isinstance(out, pd.DataFrame)
@@ -70,13 +79,20 @@ def test_price_history_contract(factory):
     assert list(out.columns) == tickers
     assert all(d == "float64" for d in out.dtypes)
     assert not out.index.has_duplicates
+    # Naive throughout, so downstream date arithmetic never hits a tz mismatch.
+    assert out.index.tz is None
+    # The requested window is honoured, never widened.
+    assert out.index.min() >= pd.Timestamp(START)
+    assert out.index.max() <= pd.Timestamp(END)
 
 
 @pytest.mark.parametrize("factory", ALL_SOURCES)
 def test_close_at_contract(factory):
     source = factory()
     if not source.supports(Capability.CLOSE_AT):
-        pytest.skip(f"{source.name} does not support close_at")
+        with pytest.raises(CapabilityNotSupported):
+            source.close_at(TICKERS, dt.date(2024, 1, 3))
+        return
 
     out = source.close_at(TICKERS, dt.date(2024, 1, 3))
     assert isinstance(out, pd.Series)
@@ -88,7 +104,9 @@ def test_close_at_contract(factory):
 def test_latest_contract(factory):
     source = factory()
     if not source.supports(Capability.LATEST):
-        pytest.skip(f"{source.name} does not support latest")
+        with pytest.raises(CapabilityNotSupported):
+            source.latest(TICKERS)
+        return
 
     out = source.latest(TICKERS)
     assert isinstance(out, pd.Series)
@@ -100,7 +118,9 @@ def test_latest_contract(factory):
 def test_sovereign_yields_contract(factory):
     source = factory()
     if not source.supports(Capability.SOVEREIGN):
-        pytest.skip(f"{source.name} does not support sovereign yields")
+        with pytest.raises(CapabilityNotSupported):
+            source.sovereign_yields(["US", "FR"], [5, 10], dt.date(2024, 6, 28))
+        return
 
     out = source.sovereign_yields(["US", "FR"], [5, 10], dt.date(2024, 6, 28))
     assert isinstance(out, pd.DataFrame)
