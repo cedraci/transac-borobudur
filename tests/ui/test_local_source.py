@@ -56,3 +56,22 @@ def test_from_upload_reads_csv():
 def test_from_upload_rejects_unknown_extension():
     with pytest.raises(ValueError, match="unsupported"):
         LocalSource.from_upload(io.BytesIO(b""), "prices.txt")
+
+
+def test_from_upload_reads_parquet_with_a_datetime_index():
+    buffer = io.BytesIO()
+    _frame().to_parquet(buffer)
+    buffer.seek(0)
+    source = LocalSource.from_upload(buffer, "prices.parquet")
+    assert source.available_tickers() == ["AAPL.US", "MSFT.US"]
+
+
+def test_from_upload_rejects_parquet_with_a_non_date_index():
+    # pd.to_datetime reads an integer index as epoch nanoseconds instead of
+    # failing, which silently produced a dataset dated 1970 with one
+    # nanosecond of history.
+    buffer = io.BytesIO()
+    pd.DataFrame({"AAPL.US": [100.0, 101.0]}, index=[0, 1]).to_parquet(buffer)
+    buffer.seek(0)
+    with pytest.raises(ValueError, match="date"):
+        LocalSource.from_upload(buffer, "prices.parquet")

@@ -37,6 +37,14 @@ class LocalSource(BaseSource):
             frame = pd.read_excel(file_like, index_col=0, parse_dates=True)
         elif suffix == ".parquet":
             frame = pd.read_parquet(file_like)
+            # Unlike the csv/xlsx paths there is no parse_dates here, and
+            # pd.to_datetime would later read an integer index as epoch
+            # nanoseconds rather than fail - yielding a silent 1970 dataset.
+            if not isinstance(frame.index, pd.DatetimeIndex):
+                raise ValueError(
+                    f"parquet index is not dates (found {frame.index.dtype}) - "
+                    f"save the file with its dates as the index"
+                )
         else:
             raise ValueError(
                 f"unsupported file type '{suffix}' - use .csv, .xlsx or .parquet"
