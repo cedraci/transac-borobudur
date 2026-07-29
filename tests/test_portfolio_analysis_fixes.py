@@ -27,9 +27,13 @@ def test_drawdowns_table_honours_top_n():
 
 def test_drawdowns_table_honours_min_drawdown():
     nav = _nav()
-    shallow = pa.drawdowns_table(nav, top_n=50, min_drawdown=0.01)
+    shallow = pa.drawdowns_table(nav, top_n=50, min_drawdown=0.02)
     deep = pa.drawdowns_table(nav, top_n=50, min_drawdown=0.15)
-    assert len(deep) <= len(shallow)
+
+    # Pre-fix, min_drawdown was hardcoded to 0.02, so both calls returned the
+    # same rows and any <=-style assertion passed vacuously.
+    assert len(deep) < len(shallow)
+    assert (deep["drawdown"].abs() >= 0.15).all()
 
 
 def test_drawdowns_table_returns_the_expected_columns():
