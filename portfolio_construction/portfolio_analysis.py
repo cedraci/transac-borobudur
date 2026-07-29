@@ -276,27 +276,30 @@ def monteCarlo_es(num, startprice, mean, sigma, alpha, duration, distrib):
 def stats_report(df, rf=0.0, trace=False, rebased_plot=False):
     """function that compile statistics for dataframe of strategies"""
     global_results = []
-    fd_results = dict()
 
     for fd in df.columns:
         cal_perf = calendar_performances(df[fd])
-        fd_results.update(
-            {
-                "Name": fd,
-                "Ann. Return": "{:.2%}".format(annualized_return(df[fd])),
-                "Ann. Volatility": "{:.2%}".format(annualized_volatility(df[fd])),
-                "Ann. Sharpe": "{:.2%}".format(annualized_sharpe_ratio(df[fd], rf=rf)),
-                "Value-at-Risk": "{:.2%}".format(historical_var(df[fd], 0.05, 1)),
-                "Expected Shortfall (histo)": "{:.2%}".format(
-                    historical_es(df[fd], 0.05, 1)
-                ),
-                "Max Drawdown": "{:.2%}".format(maximum_drawdown(df[fd])),
-                cal_perf.index[-1]: "{:.2%}".format(cal_perf.iloc[-1, -1]),
-                cal_perf.index[-2]: "{:.2%}".format(cal_perf.iloc[-2, -1]),
-                cal_perf.index[-3]: "{:.2%}".format(cal_perf.iloc[-3, -1]),
-            }
-        )
-        global_results.append(fd_results.copy())
+        # Build a fresh dict per column - reusing one dict across iterations
+        # (the previous implementation) let trailing-year keys from an
+        # earlier column with a longer/later history leak into a later
+        # column whose own history doesn't cover those years.
+        fd_results = {
+            "Name": fd,
+            "Ann. Return": "{:.2%}".format(annualized_return(df[fd])),
+            "Ann. Volatility": "{:.2%}".format(annualized_volatility(df[fd])),
+            "Ann. Sharpe": "{:.2%}".format(annualized_sharpe_ratio(df[fd], rf=rf)),
+            "Value-at-Risk": "{:.2%}".format(historical_var(df[fd], 0.05, 1)),
+            "Expected Shortfall (histo)": "{:.2%}".format(
+                historical_es(df[fd], 0.05, 1)
+            ),
+            "Max Drawdown": "{:.2%}".format(maximum_drawdown(df[fd])),
+        }
+        # Report up to the three most recent calendar periods, fewer when
+        # the history is shorter than that instead of raising IndexError.
+        n_periods = min(3, len(cal_perf))
+        for i in range(1, n_periods + 1):
+            fd_results[cal_perf.index[-i]] = "{:.2%}".format(cal_perf.iloc[-i, -1])
+        global_results.append(fd_results)
     df_results = pd.DataFrame(global_results)
 
     if trace == True:

@@ -54,34 +54,9 @@ def weighted_nav(prices: pd.DataFrame, weights: dict[str, float] | None = None) 
 
 
 def performance_table(prices: pd.DataFrame, rf: float = 0.0) -> pd.DataFrame:
-    """The headline statistics, one row per column of `prices`.
-
-    pa.stats_report hardcodes cal_perf.index[-1], [-2], [-3], so it raises
-    IndexError whenever fewer than three calendar years are present (e.g. 500
-    business days from 2020-01-01 only spans 2020-2021). Rebuild the same
-    columns from the same building blocks, pulling as many trailing calendar
-    years as actually exist instead of always demanding three.
-    """
+    """The headline statistics, one row per column of `prices`."""
     _require_two_rows(prices)
-    rows = []
-    for column in prices.columns:
-        series = prices[column]
-        cal_perf = pa.calendar_performances(series)
-        row = {
-            "Name": column,
-            "Ann. Return": "{:.2%}".format(pa.annualized_return(series)),
-            "Ann. Volatility": "{:.2%}".format(pa.annualized_volatility(series)),
-            "Ann. Sharpe": "{:.2%}".format(pa.annualized_sharpe_ratio(series, rf=rf)),
-            "Value-at-Risk": "{:.2%}".format(pa.historical_var(series, 0.05, 1)),
-            "Expected Shortfall (histo)": "{:.2%}".format(
-                pa.historical_es(series, 0.05, 1)
-            ),
-            "Max Drawdown": "{:.2%}".format(pa.maximum_drawdown(series)),
-        }
-        for i in range(1, min(3, len(cal_perf)) + 1):
-            row[cal_perf.index[-i]] = "{:.2%}".format(cal_perf.iloc[-i, -1])
-        rows.append(row)
-    return pd.DataFrame(rows)
+    return pa.stats_report(prices, rf=rf)
 
 
 def drawdown_series(nav: pd.Series) -> pd.Series:
