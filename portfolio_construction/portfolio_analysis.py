@@ -344,7 +344,7 @@ def cagr_rolled(
 
     for year in range(0, periods):
         # set the first value, the yearly return
-        result_matrix[year][0] = yearly_returns.iloc[year].values
+        result_matrix[year][0] = float(yearly_returns.iloc[year].iloc[0])
 
         # loop to compile cagr through all holding periods
         for holding_period in range(2, current_max_holding_period + 1):
@@ -356,9 +356,11 @@ def cagr_rolled(
                 sub_period = yearly_returns.iloc[year : year + holding_period]
 
                 # cagr calculation
-                result_matrix[year, holding_period - 1] = (
-                    sub_period.apply(lambda x: np.cumprod(1 + x)).tail(1).values
-                ) ** (1 / holding_period) - 1.0
+                result_matrix[year, holding_period - 1] = float(
+                    (sub_period.apply(lambda x: np.cumprod(1 + x)).tail(1).values.item())
+                    ** (1 / holding_period)
+                    - 1.0
+                )
 
         # convert to pandas dataframe
         result_df = pd.DataFrame(
@@ -638,10 +640,17 @@ def compute_drawdown_periods(
 
 
 def drawdowns_table(
-    nav: pd.DataFrame, top_n: int = 10, min_drawdown: float = 0.01
+    nav: pd.Series, top_n: int = 10, min_drawdown: float = 0.01
 ) -> pd.DataFrame:
+    """Rank the worst drawdown episodes.
+
+    Takes a Series: `nav.items()` must yield (timestamp, price) pairs, which a
+    DataFrame does not do.
+    """
     convert_ts = [(date.date(), Decimal(str(price))) for date, price in nav.items()]
 
-    strat_dds = compute_drawdown_periods(convert_ts, top_n=10, min_drawdown=0.02)
+    strat_dds = compute_drawdown_periods(
+        convert_ts, top_n=top_n, min_drawdown=min_drawdown
+    )
 
     return pd.DataFrame(strat_dds)
