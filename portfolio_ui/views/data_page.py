@@ -130,8 +130,15 @@ def _upload_tab(store):
 def _saved_tab(store):
     active = get_active_dataset(store)
     if active is not None and st.button("Save active dataset"):
-        path = save_dataset(active)
-        st.success(f"Saved to {path}")
+        # ImportError covers a missing pyarrow (declared only in the ui extra),
+        # OSError an unwritable PORTFOLIO_UI_DATA_DIR or a parquet whose json
+        # sidecar was lost, KeyError/ValueError a sidecar that is incomplete.
+        try:
+            path = save_dataset(active)
+        except (OSError, ValueError, KeyError, ImportError) as exc:
+            st.error(str(exc))
+        else:
+            st.success(f"Saved to {path}")
 
     names = list_saved()
     if not names:
@@ -140,8 +147,13 @@ def _saved_tab(store):
 
     chosen = st.selectbox("Saved datasets", options=names)
     if st.button("Load saved dataset"):
-        set_active_dataset(store, load_dataset(chosen))
-        st.success(f"Loaded {chosen}")
+        try:
+            dataset = load_dataset(chosen)
+        except (OSError, ValueError, KeyError, ImportError) as exc:
+            st.error(str(exc))
+        else:
+            set_active_dataset(store, dataset)
+            st.success(f"Loaded {chosen}")
 
 
 def data_page() -> None:
