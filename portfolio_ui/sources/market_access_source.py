@@ -40,7 +40,15 @@ class MarketAccessSource(BaseSource):
             if history is None or history.empty:
                 continue
             column = "Adj Close" if "Adj Close" in history.columns else "Close"
-            columns[ticker] = history[column]
+            series = history[column]
+            # Each exchange comes back in its own timezone. Strip it here, per
+            # series: normalizing only after assembly is too late, because
+            # pandas would already have unioned the differing tz-aware indexes
+            # into UTC, doubling the rows and half-filling every column.
+            if getattr(series.index, "tz", None) is not None:
+                series = series.copy()
+                series.index = series.index.tz_localize(None)
+            columns[ticker] = series
 
         if not columns:
             raise TickerNotFound(f"no price history for {tickers}")

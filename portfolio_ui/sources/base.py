@@ -109,6 +109,11 @@ def normalize_price_frame(
     """
     out = frame.copy()
     out.index = pd.to_datetime(out.index)
+    # Some clients (yfinance) return an exchange-local tz. Drop it: the contract
+    # is naive calendar dates, and a tz here breaks comparison with the naive
+    # start/end Timestamps below and misaligns baskets spanning exchanges.
+    if getattr(out.index, "tz", None) is not None:
+        out.index = out.index.tz_localize(None)
     out.index.name = "Date"
     out = out[~out.index.duplicated(keep="last")]
     out = out.sort_index()

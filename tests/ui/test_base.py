@@ -64,6 +64,29 @@ def test_normalize_price_frame_slices_date_range_inclusively():
     assert len(out) == 2
 
 
+def test_normalize_price_frame_drops_the_timezone_from_an_aware_index():
+    # yfinance returns a tz-aware DatetimeIndex for daily history. Keeping the
+    # tz made the start/end comparison against a naive Timestamp raise.
+    frame = pd.DataFrame(
+        {"AAPL.US": [190.0, 191.0, 192.0]},
+        index=pd.to_datetime(
+            ["2024-01-02", "2024-01-03", "2024-01-04"]
+        ).tz_localize("America/New_York"),
+    )
+    out = normalize_price_frame(
+        frame, ["AAPL.US"], start=dt.date(2024, 1, 3), end=dt.date(2024, 1, 4)
+    )
+    assert out.index.tz is None
+    assert len(out) == 2
+    assert out.index.min() == pd.Timestamp("2024-01-03")
+    assert out.index.max() == pd.Timestamp("2024-01-04")
+
+
+def test_normalize_price_frame_leaves_a_naive_index_naive():
+    out = normalize_price_frame(_raw_frame(), ["AAPL.US"])
+    assert out.index.tz is None
+
+
 def test_normalize_price_frame_drops_duplicate_dates_keeping_last():
     frame = pd.DataFrame(
         {"AAPL.US": [1.0, 2.0]}, index=["2024-01-02", "2024-01-02"]
