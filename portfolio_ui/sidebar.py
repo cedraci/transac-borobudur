@@ -55,9 +55,12 @@ def render(store: MutableMapping) -> None:
 
         if chosen_label:
             info = by_label[chosen_label]
-            if info.available:
-                set_source_name(store, info.name)
-            else:
+            # Select it either way (spec 5.1/6.5): an unusable source stays
+            # selectable, and capability_blocked_reason disables its actions
+            # with the reason shown. Skipping the selection instead left the
+            # page claiming no source was chosen while the box displayed one.
+            set_source_name(store, info.name)
+            if not info.available:
                 st.warning(info.reason)
 
         st.divider()
