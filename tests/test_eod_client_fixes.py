@@ -4,7 +4,6 @@ import json
 import re
 
 import pandas as pd
-import pytest
 
 import portfolio_construction.async_eod as async_eod
 import portfolio_construction.eod_api as eod_api

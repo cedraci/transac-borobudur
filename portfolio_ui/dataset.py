@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -62,14 +62,32 @@ def infer_frequency(index: pd.DatetimeIndex) -> str:
     return time_series_frequence_inference(index)
 
 
+# None of the remote sources pass the requested range upstream: async_eod asks
+# for 1990-to-today, eod_api's ohlcv sends no from/to at all, and market_access
+# asks yfinance for period="max". They all slice locally, so the provenance note
+# belongs on all three - not just async_eod.
+_CLIENT_SIDE_SLICE_NOTES = {
+    "async_eod": CLIENT_SIDE_SLICE_NOTE,
+    "eod_api": (
+        "eod_api requests the full available history and ignores start/end; "
+        "the range was applied client-side"
+    ),
+    "market_access": (
+        "market_access requests period='max' and ignores start/end; "
+        "the range was applied client-side"
+    ),
+}
+
+
 def notes_for_fetch(source_name: str, requested, returned_columns) -> tuple[str, ...]:
     """Caveats worth surfacing about a fetch that just completed.
 
     Shared by build_dataset and the Data page, which caches the frame itself.
     """
     notes: list[str] = []
-    if source_name == "async_eod":
-        notes.append(CLIENT_SIDE_SLICE_NOTE)
+    slice_note = _CLIENT_SIDE_SLICE_NOTES.get(source_name)
+    if slice_note:
+        notes.append(slice_note)
 
     dropped = [t for t in requested if t not in returned_columns]
     if dropped:

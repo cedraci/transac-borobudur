@@ -91,8 +91,18 @@ def test_infer_frequency_of_daily_data():
     assert infer_frequency(_frame().index) == "Daily"
 
 
-def test_notes_for_fetch_is_empty_when_everything_came_back():
-    assert notes_for_fetch("eod_api", TICKERS, TICKERS) == ()
+def test_notes_for_fetch_is_empty_for_a_local_source_with_everything_present():
+    # A local/uploaded frame is not fetched, so there is no slicing caveat.
+    assert notes_for_fetch("upload:prices.csv", TICKERS, TICKERS) == ()
+
+
+@pytest.mark.parametrize("source_name", ["async_eod", "eod_api", "market_access"])
+def test_notes_for_fetch_records_client_side_slicing_for_every_remote_source(source_name):
+    # None of the three pass the requested range upstream; provenance must say so.
+    notes = notes_for_fetch(source_name, TICKERS, TICKERS)
+    assert len(notes) == 1
+    assert source_name in notes[0]
+    assert "client-side" in notes[0]
 
 
 def test_build_dataset_notes_dropped_tickers():

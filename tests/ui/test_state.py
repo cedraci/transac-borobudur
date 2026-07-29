@@ -4,8 +4,6 @@ state.py takes the store as an argument precisely so it can be tested without
 a running Streamlit script.
 """
 
-import datetime as dt
-
 import pandas as pd
 import pytest
 
