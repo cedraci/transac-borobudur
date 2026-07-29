@@ -7,3 +7,4 @@ build/
 dist/
 .env
 .pytest_cache/
+data/
