@@ -99,7 +99,30 @@ The yfinance-backed helpers in that module need no key.
 
 ---
 
-## 3. Key concepts, explained simply
+## 3. Streamlit UI
+
+Install the UI extra and launch:
+
+```powershell
+pip install -e ".[ui]"
+streamlit run portfolio_ui/app.py
+```
+
+Pick a data source in the sidebar first — `async_eod` (fast, parallel),
+`eod_api` (slower, far more endpoints) or `market_access` (yfinance, no key
+needed). The Data page builds an **active dataset** that every other page
+reuses, so you fetch once and analyze many times. Uploads (`.csv`, `.xlsx`,
+`.parquet`) and saved datasets work without any API key.
+
+Switching source later does not discard the active dataset: it keeps the
+provenance of whichever client fetched it, and only the next fetch uses the new
+selection.
+
+Saved datasets go to `data/datasets/`, overridable with `PORTFOLIO_UI_DATA_DIR`.
+
+---
+
+## 4. Key concepts, explained simply
 
 If you're new to portfolio construction, here's the vocabulary used
 throughout the codebase:
@@ -141,7 +164,7 @@ throughout the codebase:
 
 ---
 
-## 4. Module-by-module guide
+## 5. Module-by-module guide
 
 ### `portfolio_construction.stats`
 
@@ -340,7 +363,7 @@ yields = async_eod.sovereign_bonds(["US", "FR", "DE"], [2, 5, 10], "2024-06-30")
 
 ---
 
-## 5. Running the example
+## 6. Running the example
 
 `examples/asset_allocation_plot.py` sweeps a range of target returns,
 computes the minimum-variance allocation for each one (an "efficient
@@ -360,7 +383,7 @@ instead of just plotting.
 
 ---
 
-## 6. Known limitations / things to double check before relying on this
+## 7. Known limitations / things to double check before relying on this
 
 - `market_access.py`'s AlphaVantage calls require your own `ALPHAVANTAGE_API_KEY`
   (free tier, rate-limited) — see the "API key" section above.
