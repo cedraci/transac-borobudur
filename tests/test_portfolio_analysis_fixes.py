@@ -136,3 +136,50 @@ def test_stats_report_does_not_leak_year_columns_between_columns():
         assert pd.isna(bbb_row[year])
     for year in bbb_years:
         assert not pd.isna(bbb_row[year])
+
+
+def test_monteCarlo_var_is_scale_invariant():
+    """VaR expressed as a fractional return should not depend on price scale.
+
+    The old (pooled-quantile) implementation was scale invariant too, since
+    it also divided by startprice - so this alone would not have caught the
+    axis bug below. It is included as a basic sanity check that survives
+    the fix.
+    """
+    num = 200_000
+    mu, sigma, alpha, duration = 0.07, 0.15, 0.05, 1
+
+    v_100 = pa.monteCarlo_var(num, 100.0, mu, sigma, alpha, duration, "normal")
+    v_4000 = pa.monteCarlo_var(num, 4000.0, mu, sigma, alpha, duration, "normal")
+
+    assert v_100 == pytest.approx(v_4000, abs=0.003)
+
+
+def test_monteCarlo_var_alpha_margin_reflects_the_terminal_distribution():
+    """A tighter tail probability must widen VaR by a margin the pooled-quantile
+    (pre-fix) implementation could not produce.
+
+    Pre-fix, `monteCarlo_var` took `np.quantile(multi_path, alpha)` over the
+    *entire* `(duration + 1, num)` price matrix rather than the terminal
+    (final-day) row alone. Row 0 is always exactly `startprice` (a return of
+    0), and intermediate rows have smaller spread than the terminal row, so
+    pooling them dilutes the gap between alpha levels - the earlier,
+    lower-variance rows are common to both quantiles.
+
+    Empirically (num=200_000, startprice=100, mu=0.07, sigma=0.15,
+    duration=60, 8 trials each): the terminal-only margin (this
+    implementation) averages -0.0244 (std ~0.0004); the pooled-quantile
+    (buggy) margin averages -0.0207 (std ~0.0003) - about 10 standard
+    deviations apart. -0.0225 sits well outside both distributions' 3-sigma
+    bands, so this threshold holds reliably against the fix and fails
+    reliably against the bug (verified directly by temporarily reverting
+    the fixed line and re-running this test - see task-4-report.md,
+    "Fix round 1").
+    """
+    num = 200_000
+    startprice, mu, sigma, duration = 100.0, 0.07, 0.15, 60
+
+    mild = pa.monteCarlo_var(num, startprice, mu, sigma, 0.10, duration, "normal")
+    harsh = pa.monteCarlo_var(num, startprice, mu, sigma, 0.05, duration, "normal")
+
+    assert harsh - mild <= -0.0225

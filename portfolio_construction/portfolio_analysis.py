@@ -201,7 +201,10 @@ def gbm_multiple_path(
 def monteCarlo_var(num, startprice, mu, sigma, alpha, duration, distrib):
     """VaR estimation based on Monte Carlo simulations"""
     multi_path = gbm_multiple_path(num, startprice, mu, sigma, duration, distrib)
-    return np.quantile(multi_path, alpha) / startprice - 1
+    # Quantile over the terminal (final-day) distribution only - pooling in the
+    # intermediate time steps (row 0 is always startprice, i.e. a return of 0)
+    # biases the quantile toward zero and silently measures the wrong alpha.
+    return np.quantile(multi_path[-1, :], alpha) / startprice - 1
 
 
 def parametric_var(prices, vec_w, alpha, duration, distrib):

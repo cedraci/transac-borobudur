@@ -10,11 +10,31 @@ import pandas as pd
 
 from portfolio_construction import portfolio_analysis as pa
 from portfolio_construction.portfolio_optimization import get_stressed_covariance
-from portfolio_construction.stats import covariance_parametric_var
+from portfolio_construction.stats import (
+    annualization_factor,
+    covariance_parametric_var,
+    time_series_frequence_inference,
+)
 
 
 class RiskError(RuntimeError):
     """An input cannot support the requested risk statistic."""
+
+
+def _annualization_factor(index: pd.Index) -> float:
+    """The scaling factor to turn per-period moments into annualized ones.
+
+    `gbm_multiple_path` and `portfolio_path_cholesky` both assume annualized
+    mu/sigma (they scale by dt = 1/252 internally), so any per-period moment
+    computed from returns must be annualized before being handed to them.
+    """
+    try:
+        freq = time_series_frequence_inference(index)
+        return float(annualization_factor(freq))
+    except (ValueError, KeyError) as exc:
+        raise RiskError(
+            "cannot infer a time series frequency to annualize risk statistics"
+        ) from exc
 
 
 def normalize_weights(tickers, weights: dict[str, float] | None = None) -> list[float]:
@@ -53,8 +73,9 @@ def var_es_table(
     portfolio = prices.mul(pd.Series(vec_w, index=prices.columns)).sum(axis=1)
     returns = portfolio.pct_change().dropna()
 
-    mu = float(returns.mean())
-    sigma = float(returns.std())
+    factor = _annualization_factor(prices.index)
+    mu_annual = float(returns.mean()) * factor
+    sigma_annual = float(returns.std()) * np.sqrt(factor)
     start = float(portfolio.iloc[-1])
 
     rows = {
@@ -67,8 +88,8 @@ def var_es_table(
             pa.parametric_es(prices, vec_w, alpha, duration),
         ),
         "Monte Carlo": (
-            pa.monteCarlo_var(n_sims, start, mu, sigma, alpha, duration, distrib),
-            pa.monteCarlo_es(n_sims, start, mu, sigma, alpha, duration, distrib),
+            pa.monteCarlo_var(n_sims, start, mu_annual, sigma_annual, alpha, duration, distrib),
+            pa.monteCarlo_es(n_sims, start, mu_annual, sigma_annual, alpha, duration, distrib),
         ),
     }
 
@@ -86,8 +107,11 @@ def simulate_paths(
         raise RiskError("need at least two observations to simulate")
 
     returns = nav.pct_change().dropna()
+    factor = _annualization_factor(nav.index)
+    mu_annual = float(returns.mean()) * factor
+    sigma_annual = float(returns.std()) * np.sqrt(factor)
     paths = pa.gbm_multiple_path(
-        n_sims, float(nav.iloc[-1]), float(returns.mean()), float(returns.std()),
+        n_sims, float(nav.iloc[-1]), mu_annual, sigma_annual,
         days, distrib,
     )
     # gbm_multiple_path returns (days + 1, n_sims): one extra row for the
@@ -112,8 +136,15 @@ def simulate_portfolio_paths(
     returns = prices.pct_change().dropna()
     start = float(prices.mul(pd.Series(vec_w, index=prices.columns)).sum(axis=1).iloc[-1])
 
+    # portfolio_path_cholesky also assumes annualized inputs (it scales by
+    # dt = 1/252 internally, same as gbm_multiple_path): both mu and the
+    # covariance matrix must be annualized, not left at per-period scale.
+    factor = _annualization_factor(prices.index)
+    mu_annual = list(returns.mean() * factor)
+    cov_annual = returns.cov() * factor
+
     paths = pa.portfolio_path_cholesky(
-        n_sims, start, vec_w, list(returns.mean()), returns.cov(), days, distrib
+        n_sims, start, vec_w, mu_annual, cov_annual, days, distrib
     )
     # portfolio_path_cholesky also returns (days + 1, n_sims).
     frame = pd.DataFrame(np.asarray(paths))

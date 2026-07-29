@@ -68,6 +68,20 @@ def test_a_higher_confidence_gives_a_more_severe_var():
     assert harsh <= mild
 
 
+def test_var_es_table_methods_agree_in_order_of_magnitude():
+    # Historical, Parametric and Monte Carlo estimate the same underlying
+    # quantity via different methods; a table where one row is off by more
+    # than an order of magnitude from the other two (e.g. because the Monte
+    # Carlo leg was fed per-period moments where the simulator expects
+    # annualized ones) is not trustworthy even if each row individually
+    # looks like a plausible loss.
+    out = var_es_table(_prices(), None)
+    magnitudes = out["VaR"].abs()
+    for a in magnitudes:
+        for b in magnitudes:
+            assert a / b <= 5
+
+
 def test_simulate_paths_shape():
     nav = _prices(300)["AAA"]
     out = simulate_paths(nav, n_sims=50, days=30)
