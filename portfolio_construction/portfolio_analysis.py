@@ -201,7 +201,7 @@ def gbm_multiple_path(
 def monteCarlo_var(num, startprice, mu, sigma, alpha, duration, distrib):
     """VaR estimation based on Monte Carlo simulations"""
     multi_path = gbm_multiple_path(num, startprice, mu, sigma, duration, distrib)
-    return np.quantile(multi_path, alpha) / 100 - 1
+    return np.quantile(multi_path, alpha) / startprice - 1
 
 
 def parametric_var(prices, vec_w, alpha, duration, distrib):
@@ -266,11 +266,13 @@ def monteCarlo_es(num, startprice, mean, sigma, alpha, duration, distrib):
     returns = (
         multi_path / div_matrix - 1.0
     )  # calcul des rendements cumulés sur la période
-    var_threeshold = np.quantile(returns, alpha)  # extraction du seuil de la VaR
+    # rendements cumulés au jour final, pour chaque trajectoire simulée
+    final_returns = returns[-1, :]
+    var_threeshold = np.quantile(final_returns, alpha)  # extraction du seuil de la VaR
 
     # extraction des indices où le rendement cumulé final est en dessous du seuil
-    below_var = np.where(returns[:, -1] <= var_threeshold)[0]
-    return np.mean(returns[below_var, -1])
+    below_var = np.where(final_returns <= var_threeshold)[0]
+    return np.mean(final_returns[below_var])
 
 
 def stats_report(df, rf=0.0, trace=False, rebased_plot=False):
