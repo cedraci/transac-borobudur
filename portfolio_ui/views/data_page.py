@@ -23,6 +23,11 @@ from portfolio_ui.sources.local_source import LocalSource
 from portfolio_ui.sources.registry import build_source
 from portfolio_ui.state import get_active_dataset, get_source_name, set_active_dataset
 
+# st.date_input without explicit bounds only allows value +/- 10 years, so a
+# "From" defaulting to 2015 silently capped the picker at 2025. Every date
+# input on this page states its own range instead.
+EARLIEST_HISTORY = dt.date(1990, 1, 1)  # EOD's full-history requests start here
+
 
 def _fetch_tab(store, source):
     raw = st.text_area(
@@ -31,8 +36,14 @@ def _fetch_tab(store, source):
     tickers = parse_tickers(raw)
 
     col_start, col_end = st.columns(2)
-    start = col_start.date_input("From", value=dt.date(2015, 1, 1))
-    end = col_end.date_input("To", value=dt.date.today())
+    start = col_start.date_input(
+        "From", value=dt.date(2015, 1, 1),
+        min_value=EARLIEST_HISTORY, max_value=dt.date.today(),
+    )
+    end = col_end.date_input(
+        "To", value=dt.date.today(),
+        min_value=EARLIEST_HISTORY, max_value=dt.date.today(),
+    )
 
     name = st.text_input("Dataset name", value="working-set")
     blocked = capability_blocked_reason(source, Capability.PRICE_HISTORY)
@@ -68,7 +79,10 @@ def _fetch_tab(store, source):
 def _point_in_time_tab(source):
     raw = st.text_area("Tickers", value="AAPL.US, MSFT.US", key="pit_tickers")
     tickers = parse_tickers(raw)
-    on = st.date_input("As of", value=dt.date.today() - dt.timedelta(days=1))
+    on = st.date_input(
+        "As of", value=dt.date.today() - dt.timedelta(days=1),
+        min_value=EARLIEST_HISTORY, max_value=dt.date.today(),
+    )
 
     close_blocked = capability_blocked_reason(source, Capability.CLOSE_AT)
     latest_blocked = capability_blocked_reason(source, Capability.LATEST)
@@ -100,7 +114,10 @@ def _sovereign_tab(source):
     countries = parse_tickers(st.text_input("Countries (ISO codes)", value="US, FR, DE"))
     tenors_raw = st.text_input("Tenors (years)", value="2, 5, 10")
     tenors = [int(t) for t in parse_tickers(tenors_raw) if t.isdigit()]
-    on = st.date_input("As of", value=dt.date.today() - dt.timedelta(days=1), key="sov_date")
+    on = st.date_input(
+        "As of", value=dt.date.today() - dt.timedelta(days=1),
+        min_value=EARLIEST_HISTORY, max_value=dt.date.today(), key="sov_date",
+    )
 
     blocked = capability_blocked_reason(source, Capability.SOVEREIGN)
     if st.button("Fetch yields", disabled=bool(blocked), help=blocked):
