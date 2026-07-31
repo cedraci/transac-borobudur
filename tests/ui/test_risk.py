@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from portfolio_ui.analytics import weighted_nav
 from portfolio_ui.risk import (
     RiskError,
     covariance_var,
@@ -113,6 +114,27 @@ def test_stressing_raises_off_diagonal_covariance():
     plain = prices.pct_change().dropna().cov()
     stressed = stressed_covariance(prices, stress_factor=0.9)
     assert stressed.loc["AAA", "BBB"] >= plain.loc["AAA", "BBB"]
+
+
+def test_weighted_nav_volatility_differs_materially_from_the_naive_price_mean():
+    # Regression for the Monte Carlo tab's unchecked ("single series") branch,
+    # which used `dataset.prices.mean(axis=1)` - a naive average of raw price
+    # LEVELS, not an equal-weighted NAV. A high-price, low-vol asset then
+    # dominates a low-price, high-vol one 100:1, silently hiding the second
+    # asset's risk. weighted_nav rebases each asset to 100 first, so both
+    # contribute by capital weight regardless of price level.
+    idx = pd.bdate_range("2020-01-01", periods=500, name="Date")
+    rng = np.random.default_rng(7)
+    big = 500 * np.exp(np.cumsum(rng.normal(0.0002, 0.005, len(idx))))  # ~$500, 0.5% daily vol
+    small = 5 * np.exp(np.cumsum(rng.normal(0.0002, 0.05, len(idx))))  # ~$5, 5% daily vol
+    prices = pd.DataFrame({"BIG": big, "SMALL": small}, index=idx)
+
+    naive_mean_vol = prices.mean(axis=1).pct_change().dropna().std()
+    weighted_vol = weighted_nav(prices).pct_change().dropna().std()
+
+    # The naive mean is essentially BIG alone; the weighted NAV must show
+    # materially more volatility once SMALL is actually weighted in.
+    assert weighted_vol > naive_mean_vol * 2
 
 
 def test_covariance_var_is_a_loss_and_worsens_under_stress():
