@@ -47,6 +47,24 @@ def weighted_nav(prices: pd.DataFrame, weights: dict[str, float] | None = None) 
         raise AnalyticsError(f"weights must sum to 1.0, got {total:.4f}")
 
     used = prices[list(weights)]
+
+    # Align to the common history BEFORE rebasing. A ticker that lists later has
+    # a NaN first price; dividing by it turns its ENTIRE rebased column to NaN,
+    # and .sum(axis=1) then skips it silently - so the asset vanished from every
+    # row and the NAV started below 100 instead of at it.
+    complete = used.dropna(how="any")
+    if complete.empty:
+        raise AnalyticsError(
+            f"the histories of {', '.join(used.columns)} do not overlap - "
+            "no date has data for all of them"
+        )
+
+    used = used.loc[complete.index[0] :].ffill()
+    if len(used) < 2:
+        raise AnalyticsError(
+            "fewer than two dates where every selected ticker has data"
+        )
+
     rebased = used.div(used.iloc[0])
     nav = rebased.mul(pd.Series(weights)).sum(axis=1) * 100.0
     nav.name = "Portfolio"
@@ -56,7 +74,13 @@ def weighted_nav(prices: pd.DataFrame, weights: dict[str, float] | None = None) 
 def performance_table(prices: pd.DataFrame, rf: float = 0.0) -> pd.DataFrame:
     """The headline statistics, one row per column of `prices`."""
     _require_two_rows(prices)
-    return pa.stats_report(prices, rf=rf)
+    try:
+        return pa.stats_report(prices, rf=rf)
+    except (ValueError, IndexError) as exc:
+        # stats_report needs complete calendar periods; a short fetch cannot
+        # supply them. The page renders AnalyticsError, so translate rather
+        # than letting a raw IndexError reach the browser.
+        raise AnalyticsError(f"not enough history for performance statistics: {exc}") from exc
 
 
 def drawdown_series(nav: pd.Series) -> pd.Series:

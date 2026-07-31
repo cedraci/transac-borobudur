@@ -183,3 +183,32 @@ def test_monteCarlo_var_alpha_margin_reflects_the_terminal_distribution():
     harsh = pa.monteCarlo_var(num, startprice, mu, sigma, 0.05, duration, "normal")
 
     assert harsh - mild <= -0.0225
+
+
+def test_calendar_performances_rejects_a_history_too_short_for_one_month():
+    """A two-week fetch is ordinary; it must fail cleanly, not with IndexError.
+
+    monthly_returns yields an empty frame for such input, and the old code then
+    indexed returns.index[0] out of range.
+    """
+    short = _nav(days=10)
+    with pytest.raises(ValueError, match="complete month"):
+        pa.calendar_performances(short)
+
+
+def test_calendar_performances_still_works_for_an_adequate_history():
+    out = pa.calendar_performances(_nav(days=800))
+    assert isinstance(out, pd.DataFrame)
+    assert not out.empty
+
+
+def test_cagr_rolled_returns_an_empty_frame_when_there_are_no_rolling_years():
+    """A dataset inside a single calendar year yields zero yearly returns.
+
+    result_df used to be assigned only inside the loop, so this raised
+    UnboundLocalError.
+    """
+    empty_yearly = pd.DataFrame({"Portfolio": []}, dtype="float64")
+    out = pa.cagr_rolled(empty_yearly, max_holding_period=5)
+    assert isinstance(out, pd.DataFrame)
+    assert out.empty

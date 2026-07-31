@@ -73,6 +73,14 @@ def calendar_performances(strat):
         bkt_series
     )  # extract monthly returns from dataframe indexed by dates
 
+    if returns.empty:
+        # Fewer than two month-ends in the input, so there is no complete month
+        # to report. Fail with something a caller can act on rather than an
+        # IndexError from returns.index[0] below.
+        raise ValueError(
+            "calendar_performances needs at least one complete month of data"
+        )
+
     # reformat dates in index to ensure that it is the last day of the month
     returns.index = returns.index.map(lambda x: x + pd.tseries.offsets.MonthEnd(0))
 
@@ -370,12 +378,14 @@ def cagr_rolled(
                     - 1.0
                 )
 
-        # convert to pandas dataframe
-        result_df = pd.DataFrame(
-            result_matrix,
-            columns=range(1, current_max_holding_period + 1),
-            index=yearly_returns.index,
-        )
+    # Built unconditionally: a dataset confined to a single calendar year gives
+    # zero yearly returns, the loop above never runs, and this used to fall
+    # through to an unbound result_df.
+    result_df = pd.DataFrame(
+        result_matrix,
+        columns=range(1, current_max_holding_period + 1),
+        index=yearly_returns.index,
+    )
     return result_df
 
 

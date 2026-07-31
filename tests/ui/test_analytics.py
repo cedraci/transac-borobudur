@@ -139,3 +139,40 @@ def test_functions_reject_a_single_row_input():
     one_row = _prices(1)
     with pytest.raises(AnalyticsError, match="at least two"):
         to_returns(one_row)
+
+
+def test_performance_table_reports_a_short_history_as_an_analytics_error():
+    """The Analysis page renders AnalyticsError; a raw IndexError would escape."""
+    with pytest.raises(AnalyticsError, match="not enough history"):
+        performance_table(_prices(10))
+
+
+def test_weighted_nav_includes_a_ticker_that_lists_later():
+    """A late-listing ticker used to be silently dropped from every row.
+
+    Its first price is NaN, so dividing by it made the whole rebased column NaN
+    and .sum(axis=1) skipped it - the NAV started below 100 and ignored the asset.
+    """
+    prices = _prices(300)
+    prices.loc[prices.index[:100], "BBB"] = np.nan
+
+    nav = weighted_nav(prices)
+
+    assert nav.iloc[0] == pytest.approx(100.0)
+    # BBB must actually move the NAV: compare against AAA alone over the same span
+    aaa_only = weighted_nav(prices[["AAA"]].loc[nav.index])
+    assert not np.isclose(nav.iloc[-1], aaa_only.iloc[-1])
+
+
+def test_weighted_nav_starts_at_100_even_with_a_late_listing():
+    prices = _prices(300)
+    prices.loc[prices.index[:250], "BBB"] = np.nan
+    assert weighted_nav(prices).iloc[0] == pytest.approx(100.0)
+
+
+def test_weighted_nav_rejects_non_overlapping_histories():
+    prices = _prices(300)
+    prices.loc[prices.index[150:], "AAA"] = np.nan
+    prices.loc[prices.index[:150], "BBB"] = np.nan
+    with pytest.raises(AnalyticsError, match="do not overlap"):
+        weighted_nav(prices)
