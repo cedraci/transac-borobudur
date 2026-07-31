@@ -61,8 +61,14 @@ def ERC(w, S):
     return error
 
 def MDP(w, S):
-    """ Objective function for the Most Diversify Portfolio optimization problem """
-    return -np.transpose(np.dot(w, np.diag(S)))/np.sqrt(np.dot(np.dot(w, S), w))
+    """ Objective function for the Most Diversify Portfolio optimization problem
+
+    The diversification ratio is (w.sigma)/sigma_p, so the numerator needs the
+    assets' standard deviations. np.diag(S) on a 2-D covariance gives
+    VARIANCES, which made the objective favour the noisiest asset.
+    """
+    volatilities = np.sqrt(np.diag(S))
+    return -np.transpose(np.dot(w, volatilities))/np.sqrt(np.dot(np.dot(w, S), w))
 
 def InverseVol(S):
     inverse_vol = 1 / np.sqrt(np.diagonal(S))
@@ -95,15 +101,18 @@ def max_momentum(w, mom):
 def max_momentum_optimization(ret, scores):
     TOLERANCE = 1e-15
 
-    #cov = np.cov(ret, rowvar=False)
-    real_cov = np.cov(ret, rowvar=False)
-    cov = ShrunkCovariance().fit(real_cov).covariance_
+    # ShrunkCovariance must see the RETURNS: handed an (n,n) covariance it
+    # treats it as n observations of n features and returns a near-zero matrix.
+    cov = ShrunkCovariance().fit(np.asarray(ret)).covariance_
 
     w = np.ones(cov.shape[0])/cov.shape[0]
     e = np.ones(cov.shape[0])
 
+    # w'Sw is a DAILY VARIANCE; annualising it takes *252 and a square root to
+    # become a volatility. The docstring specifies sigma(W) <= sigma_star, so
+    # this is an inequality (scipy 'ineq' requires fun(w) >= 0).
     const = [{'type' : 'eq' , 'fun' : lambda w: np.dot(w, e) - 1.},
-            {'type' : 'eq' , 'fun' : lambda w: np.dot(np.dot(w, cov), w) * np.sqrt(252) - 0.06}]
+            {'type' : 'ineq' , 'fun' : lambda w: 0.06 - np.sqrt(np.dot(np.dot(w, cov), w) * 252)}]
 
     bds = [(0.0, 1.) for i in range(0, len(e))]
 
@@ -118,15 +127,13 @@ def longshort_momentum_optimization(ret, scores):
     """
     TOLERANCE = 1e-12
 
-    #cov = np.cov(ret, rowvar=False)
-    real_cov = np.cov(ret, rowvar=False)
-    cov = ShrunkCovariance().fit(real_cov).covariance_
+    cov = ShrunkCovariance().fit(np.asarray(ret)).covariance_
 
     w = np.ones(cov.shape[0])/cov.shape[0]
     e = np.ones(cov.shape[0])
 
     const = [{'type' : 'eq' , 'fun' : lambda w: np.dot(w, e) - 0.},
-            {'type' : 'eq' , 'fun' : lambda w: np.dot(np.dot(w, cov), w) * np.sqrt(252) - 0.04}]
+            {'type' : 'ineq' , 'fun' : lambda w: 0.04 - np.sqrt(np.dot(np.dot(w, cov), w) * 252)}]
 
     bds = [(-0.5, 0.50) for i in range(0, len(e))]
 
@@ -140,8 +147,8 @@ def portfolio_optimization(ret, typeOpt, bounds=None, cov_mat="sample", target_r
     annual_factor = annualization_factor(data_frequence)
 
     if cov_mat == "shrunked":
-        real_cov = np.cov(ret, rowvar=False)
-        cov = ShrunkCovariance().fit(real_cov).covariance_
+        # fitted on the returns, not on their covariance - see MDP note above
+        cov = ShrunkCovariance().fit(np.asarray(ret)).covariance_
     elif cov_mat == "gerber":
         corr = gerber_correlation_matrix(ret, 0.5, True) # on calcul la matrice de correlation
         cov = corr_to_cov(corr, ret.std()) # de laquelle on dérive la matrice de covariance
