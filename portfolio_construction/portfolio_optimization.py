@@ -34,11 +34,21 @@ def maximum_sharpe(w, mean_ret, S):
     return np.dot(mean_ret, w) / np.sqrt(np.dot(w.T, np.dot(S, w))) * -1
 
 def risk_contribution(w, S):
-    """ function that calculates asset risk contribution to total risk """
+    """ function that calculates asset risk contribution to total risk
+
+    Returns one value per asset; they sum to the portfolio volatility.
+
+    `S * w.T` is a matrix product only when S is an np.matrix. Every caller
+    passes a plain ndarray (np.cov returns one), where `*` broadcasts
+    elementwise and produced an n-by-n array instead. That corrupted ERC's
+    error term, so "equal risk contribution" did not equalise risk.
+    """
+    w = np.asarray(w).ravel()
+    S = np.asarray(S)
     sigma_p = np.sqrt(np.dot(np.dot(w, S), w))
-    
+
     # Marginal Risk Contribution
-    RC = np.multiply(S * w.T, w.T)/sigma_p
+    RC = np.multiply(np.dot(S, w), w)/sigma_p
     return RC
 
 def ERC(w, S):
