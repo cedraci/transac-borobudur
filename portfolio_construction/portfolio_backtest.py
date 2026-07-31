@@ -118,6 +118,8 @@ class Backtest:
         self.daily_prices = None
         self.lookback = None
         self.historical_portfolios = None
+        self.selection_window = 250
+        self.nb_securities = 6
 
     def initialize_parameters(self, data, start_date, end_date, lookback, method="eom"):
         """Prepare the backtest window, returns and rebalancing calendar.
@@ -176,7 +178,8 @@ class Backtest:
         else:
             return False
 
-    def simulations(self, typeOpt, robust=False, bayes=False, stock_picking=False):
+    def simulations(self, typeOpt, robust=False, bayes=False, stock_picking=False,
+                    selection_window=None, nb_securities=None):
         self.backtest_start_date = datetime.datetime.now()
         # Do things
         portfolio = ptf.Portfolio()
@@ -184,13 +187,15 @@ class Backtest:
 
         for i, dAy in enumerate(self.dates_series):
             if i == 0:
-                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking)
+                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking,
+                                             selection_window, nb_securities)
                 portfolio.save_current_portfolio(dAy, w_star)
                 strat.append(np.sum(list(portfolio.portfolio_weights.values())))
             elif self.is_rebal_date(dAy):
                 daily_perf = list(portfolio.portfolio_weights.values()) * (1 + self.daily_returns.loc[dAy, portfolio.portfolio_weights.keys()]) - list(portfolio.portfolio_weights.values())
                 strat.append(strat[-1] * (1 + np.sum(daily_perf)))
-                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking)
+                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking,
+                                             selection_window, nb_securities)
                 portfolio.save_current_portfolio(dAy, w_star)
             else:
                 new_weights = list(portfolio.portfolio_weights.values()) * (1 + self.daily_returns.loc[dAy, portfolio.portfolio_weights.keys()])
@@ -203,12 +208,19 @@ class Backtest:
         self.backtest_duration = self.backtest_end_date - self.backtest_start_date
         self.historical_portfolios = portfolio.historical_portfolios
 
-    def target_weights(self, current_date, typeOpt, robust, bayes, stock_picking=False):
+    def target_weights(self, current_date, typeOpt, robust, bayes, stock_picking=False,
+                       selection_window=None, nb_securities=None):
         idx_day = np.where(self.daily_returns.index == current_date)[0][0]
         #sub_data = self.daily_returns.iloc[(idx_day - self.lookback):idx_day]
 
         if stock_picking == True:
-            univ_idx, univ_names, mom_scores = universe_selection(self.daily_prices, current_date, 250, 6)
+            # Both were hardcoded to 250/6, so a caller asking for a different
+            # universe size was silently ignored.
+            window = self.selection_window if selection_window is None else selection_window
+            count = self.nb_securities if nb_securities is None else nb_securities
+            count = min(count, self.daily_prices.shape[1])
+            univ_idx, univ_names, mom_scores = universe_selection(
+                self.daily_prices, current_date, window, count)
             sub_data = self.daily_returns.iloc[0:idx_day,univ_idx]
         else:
             sub_data = self.daily_returns.iloc[0:idx_day]

@@ -157,3 +157,24 @@ def test_simulations_without_stock_picking_uses_every_column():
     bt.simulations("minimum_variance")
     first_weights = bt.historical_portfolios[0]["weights"]
     assert set(first_weights) == set(prices.columns)
+
+
+def test_target_weights_honours_nb_securities():
+    """universe_selection was called with a hardcoded 250-window and 6 names."""
+    rng = np.random.default_rng(1)
+    idx = pd.bdate_range("2019-01-01", periods=800, name="Date")
+    prices = pd.DataFrame(
+        {
+            f"T{i}": 100 * np.exp(np.cumsum(rng.normal(0.0004, 0.012 + 0.002 * i, 800)))
+            for i in range(6)
+        },
+        index=idx,
+    )
+
+    bt = pb.Backtest()
+    bt.initialize_parameters(prices, "2020-06-01", "2020-09-30", 250, method="eom")
+    weights = bt.target_weights(
+        bt.dates_series[0], "minimum_variance", False, False,
+        stock_picking=True, nb_securities=2,
+    )
+    assert len(weights) == 2
