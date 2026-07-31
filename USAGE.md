@@ -122,6 +122,20 @@ needed). The Data page builds an **active dataset** that every other page
 reuses, so you fetch once and analyze many times. Uploads (`.csv`, `.xlsx`,
 `.parquet`) and saved datasets work without any API key.
 
+The six pages:
+
+| Page | What it does |
+|---|---|
+| **Data** | Build the active dataset: fetch, upload, save and reload |
+| **Market Data** | Fundamentals, corporate actions, calendars and macro — EOD-only endpoints, so it ignores the source selector |
+| **Analysis** | Performance statistics, drawdown episodes, calendar and monthly returns, rolling CAGR |
+| **Risk** | VaR and expected shortfall by three methods, Monte Carlo simulation, stressed covariance |
+| **Optimization** | Eight objectives, risk decomposition, efficient frontier, Bayes-Stein and capital protection |
+| **Backtest** | Rebalanced backtests with momentum universe selection; the equity curve feeds back into Analysis |
+
+Backtest results register as **derived datasets**, so a strategy curve can be
+analysed on the Analysis and Risk pages like any other series.
+
 Switching source later does not discard the active dataset: it keeps the
 provenance of whichever client fetched it, and only the next fetch uses the new
 selection.

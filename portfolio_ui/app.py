@@ -7,7 +7,7 @@ from portfolio_ui.views.analysis_page import analysis_page
 from portfolio_ui.views.data_page import data_page
 from portfolio_ui.views.backtest_page import backtest_page
 from portfolio_ui.views.optimization_page import optimization_page
-from portfolio_ui.views.placeholders import market_data_page
+from portfolio_ui.views.market_data_page import market_data_page
 from portfolio_ui.views.risk_page import risk_page
 from portfolio_ui.state import init_state
 

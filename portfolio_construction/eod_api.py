@@ -39,10 +39,15 @@ def index_constituents(token, ticker, return_tickers=False):
     if return_tickers == False:
         return data
     else:
+        components = (data or {}).get("Components")
+        if not components:
+            # a non-index ticker returns fundamentals with no Components key
+            raise ValueError(f"no index constituents returned for {ticker}")
+
         tickers = []
-        for key in data['Components'].values():
+        for key in components.values():
             tickers.append(key['Code']+"."+key['Exchange'])
-        
+
         return tickers
 
 def ohlcv(token, ticker, as_df=True):
@@ -208,8 +213,22 @@ def fixed_income_etf(tok, ticker):
     extract = dict()
     infos = fundamentals(ticker, tok, filter="ETF_Data::Fixed_Income")
 
-    for val in infos.keys():
-        extract.update({fields[val]:float(infos[val]["Relative_to_Category"])})
+    # Only the fields above are known; EOD returns whatever an ETF happens to
+    # have, and mapping an unknown key through `fields` used to raise KeyError
+    # and lose the entire response.
+    for val in (infos or {}).keys():
+        if val not in fields:
+            continue
+        relative = (infos[val] or {}).get("Relative_to_Category")
+        if relative in (None, ""):
+            continue
+        try:
+            extract[fields[val]] = float(relative)
+        except (TypeError, ValueError):
+            continue
+
+    if not extract:
+        raise ValueError(f"no fixed income fields returned for {ticker}")
 
     df = pd.DataFrame().from_dict(extract, orient="index")
     df.columns = [ticker]
