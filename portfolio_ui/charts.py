@@ -127,3 +127,106 @@ def simulation_fan_figure(paths: pd.DataFrame, title: str) -> go.Figure:
         margin=dict(l=40, r=20, t=60, b=40),
     )
     return fig
+
+
+def weights_bar_figure(weights: pd.Series, title: str) -> go.Figure:
+    """One bar per ticker, for a single allocation."""
+    fig = go.Figure(
+        data=[go.Bar(x=list(weights.index), y=list(weights.values), name="Weight")]
+    )
+    fig.update_layout(
+        title=title,
+        xaxis_title="Ticker",
+        yaxis_title="Weight",
+        yaxis_tickformat=".1%",
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    return fig
+
+
+def frontier_figure(frontier: pd.DataFrame, points: dict | None = None) -> go.Figure:
+    """Risk on the x-axis, return on the y-axis - the conventional orientation.
+
+    `points` marks named portfolios as (volatility, return) so a chosen
+    objective can be seen against the frontier rather than in isolation.
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=frontier["Volatility"],
+            y=frontier["Return"],
+            mode="lines+markers",
+            name="Efficient frontier",
+        )
+    )
+
+    for name, (volatility, expected) in (points or {}).items():
+        fig.add_trace(
+            go.Scatter(
+                x=[volatility], y=[expected], mode="markers",
+                marker=dict(size=12, symbol="star"), name=name,
+            )
+        )
+
+    fig.update_layout(
+        title="Efficient frontier",
+        xaxis_title="Volatility",
+        yaxis_title="Return",
+        xaxis_tickformat=".1%",
+        yaxis_tickformat=".1%",
+        hovermode="closest",
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    return fig
+
+
+def correlation_heatmap_figure(corr: pd.DataFrame) -> go.Figure:
+    """Correlation matrix as a heatmap on a fixed -1..1 scale.
+
+    Fixing the range matters: an auto-scaled correlation heatmap makes weakly
+    correlated assets look strongly correlated.
+    """
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=corr.values,
+                x=list(corr.columns),
+                y=list(corr.index),
+                zmin=-1.0,
+                zmax=1.0,
+                colorscale="RdBu",
+                reversescale=True,
+                colorbar=dict(title="Correlation"),
+            )
+        ]
+    )
+    fig.update_layout(
+        title="Correlation matrix",
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    return fig
+
+
+def weights_over_time_figure(weights: pd.DataFrame) -> go.Figure:
+    """Stacked area of the allocation through a backtest."""
+    fig = go.Figure()
+    for ticker in weights.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=weights.index,
+                y=weights[ticker],
+                mode="lines",
+                name=ticker,
+                stackgroup="allocation",
+            )
+        )
+
+    fig.update_layout(
+        title="Allocation over time",
+        xaxis_title="Date",
+        yaxis_title="Weight",
+        yaxis_tickformat=".0%",
+        hovermode="x unified",
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    return fig

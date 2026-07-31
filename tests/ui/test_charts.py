@@ -96,3 +96,57 @@ def test_simulation_fan_figure_summarizes_rather_than_drawing_every_path():
     # median + two band edges, never 500 traces
     assert len(fig.data) <= 3
     assert fig.layout.title.text == "Simulated NAV"
+
+
+def test_weights_bar_figure_has_a_bar_per_ticker():
+    from portfolio_ui.charts import weights_bar_figure
+
+    weights = pd.Series({"AAA": 0.5, "BBB": 0.3, "CCC": 0.2})
+    fig = weights_bar_figure(weights, title="Optimal weights")
+    assert len(fig.data) == 1
+    assert list(fig.data[0].x) == ["AAA", "BBB", "CCC"]
+    assert list(fig.data[0].y) == [0.5, 0.3, 0.2]
+    assert fig.layout.title.text == "Optimal weights"
+
+
+def test_frontier_figure_plots_volatility_against_return():
+    from portfolio_ui.charts import frontier_figure
+
+    frontier = pd.DataFrame({"Return": [0.05, 0.08], "Volatility": [0.10, 0.15]})
+    fig = frontier_figure(frontier)
+    assert len(fig.data) >= 1
+    assert fig.layout.xaxis.title.text == "Volatility"
+    assert fig.layout.yaxis.title.text == "Return"
+
+
+def test_frontier_figure_can_mark_named_portfolios():
+    from portfolio_ui.charts import frontier_figure
+
+    frontier = pd.DataFrame({"Return": [0.05, 0.08], "Volatility": [0.10, 0.15]})
+    points = {"minimum_variance": (0.09, 0.04)}
+    fig = frontier_figure(frontier, points=points)
+    names = {trace.name for trace in fig.data}
+    assert "minimum_variance" in names
+
+
+def test_correlation_heatmap_is_a_single_heatmap_trace():
+    from portfolio_ui.charts import correlation_heatmap_figure
+
+    corr = pd.DataFrame(
+        [[1.0, 0.4], [0.4, 1.0]], index=["AAA", "BBB"], columns=["AAA", "BBB"]
+    )
+    fig = correlation_heatmap_figure(corr)
+    assert len(fig.data) == 1
+    assert list(fig.data[0].x) == ["AAA", "BBB"]
+
+
+def test_weights_over_time_figure_stacks_one_trace_per_ticker():
+    from portfolio_ui.charts import weights_over_time_figure
+
+    idx = pd.bdate_range("2020-01-01", periods=3, name="Date")
+    weights = pd.DataFrame({"AAA": [0.5, 0.6, 0.4], "BBB": [0.5, 0.4, 0.6]}, index=idx)
+    fig = weights_over_time_figure(weights)
+    assert len(fig.data) == 2
+    assert {t.name for t in fig.data} == {"AAA", "BBB"}
+    # stacked area, so the reader can see the mix rather than crossing lines
+    assert all(t.stackgroup for t in fig.data)
