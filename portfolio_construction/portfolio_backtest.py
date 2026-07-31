@@ -18,6 +18,44 @@ Any other value falls back to end of year.
 """
 
 
+def snap_to_trading_day(index, target, direction="forward"):
+    """Map a calendar date onto a date that actually exists in `index`.
+
+    A date picker happily returns a Saturday; the index only holds trading
+    days. Looking such a date up directly used to raise IndexError.
+
+    Args:
+        index (pd.DatetimeIndex): the available trading dates
+        target: the requested date, anything pd.Timestamp accepts
+        direction (str): "forward" for the next available date, "backward" for
+            the previous one
+
+    Returns:
+        pd.Timestamp: a date present in `index`
+    """
+    target = pd.Timestamp(target)
+
+    if target in index:
+        return target
+
+    if direction == "backward":
+        candidates = index[index <= target]
+        if len(candidates) == 0:
+            raise ValueError(
+                f"{target:%Y-%m-%d} is outside the available history "
+                f"({index[0]:%Y-%m-%d} to {index[-1]:%Y-%m-%d})"
+            )
+        return candidates[-1]
+
+    candidates = index[index >= target]
+    if len(candidates) == 0:
+        raise ValueError(
+            f"{target:%Y-%m-%d} is outside the available history "
+            f"({index[0]:%Y-%m-%d} to {index[-1]:%Y-%m-%d})"
+        )
+    return candidates[0]
+
+
 class RebalancingCalendar:
     def __init__(self, data, start_dt, end_dt, method, lookback=None):
         self.rebalCalendar = None
@@ -81,31 +119,56 @@ class Backtest:
         self.lookback = None
         self.historical_portfolios = None
 
-    def initialize_parameters(self, data, start_date, end_date, lookback):
+    def initialize_parameters(self, data, start_date, end_date, lookback, method="eom"):
+        """Prepare the backtest window, returns and rebalancing calendar.
+
+        Args:
+            data (pd.DataFrame): price history, one column per security
+            start_date (str): "YYYY-MM-DD"; snapped forward to a trading day
+            end_date (str): "YYYY-MM-DD"; snapped backward to a trading day
+            lookback (int): observations required before the start date
+            method (str): rebalancing frequency, see the module docstring
+        """
         # Il faut rajouter un test sur l'existence de NA avant les traitements car il n'en faut pas.
-        idx_start_date = np.where(data.index == datetime.datetime.strptime(start_date,"%Y-%m-%d"))[0][0]
-        idx_end_date = np.where(data.index == datetime.datetime.strptime(end_date,"%Y-%m-%d"))[0][0]
-        
+        # Dates are snapped: a date picker returns calendar days, not trading days.
+        start_ts = snap_to_trading_day(data.index, start_date, "forward")
+        end_ts = snap_to_trading_day(data.index, end_date, "backward")
+
+        if start_ts > end_ts:
+            raise ValueError(
+                f"start date {start_ts:%Y-%m-%d} is after end date {end_ts:%Y-%m-%d}"
+            )
+
+        idx_start_date = np.where(data.index == start_ts)[0][0]
+        idx_end_date = np.where(data.index == end_ts)[0][0]
+
+        if int(idx_start_date - lookback) < 0:
+            raise ValueError(
+                f"not enough history before {start_ts:%Y-%m-%d} for a lookback of "
+                f"{lookback} observations (only {idx_start_date} available)"
+            )
+
         daily_ret = data.pct_change().dropna()
-        
+
         new = daily_ret.copy()
         new['Year'] = new.index.year
         new["Month"] = new.index.month
         new["Day"] = new.index.day
-        endOfMonth = new.groupby(["Year","Month"]).tail(1)
 
-        if int(idx_start_date - lookback) < 0:
-            print("No sufficient data for lookback")
-            exit
-        else:
-            self.dates_series = data.iloc[idx_start_date:(idx_end_date + 1)].index
-            self.sequence_rebal = endOfMonth.loc[(endOfMonth.index >= start_date) & (endOfMonth.index <= end_date)].index
-            self.sequence_rebal = self.sequence_rebal.insert(0, datetime.datetime.strptime(start_date,"%Y-%m-%d"))
-            self.start_date = start_date
-            self.end_date = end_date
-            self.daily_returns = new.drop(columns = ["Year","Month","Day"]) 
-            self.daily_prices = data
-            self.lookback = lookback
+        # The rebalancing calendar drives the frequency; it used to be hardcoded
+        # to month-ends here, leaving RebalancingCalendar unused.
+        calendar = RebalancingCalendar(data, start_ts, end_ts, method)
+        self.sequence_rebal = calendar.rebalCalendar
+        if len(self.sequence_rebal) == 0 or self.sequence_rebal[0] != start_ts:
+            self.sequence_rebal = self.sequence_rebal.insert(0, start_ts)
+
+        self.rebalancing_method = method
+        self.dates_series = data.iloc[idx_start_date:(idx_end_date + 1)].index
+        self.start_date = start_ts.strftime("%Y-%m-%d")
+        self.end_date = end_ts.strftime("%Y-%m-%d")
+        self.daily_returns = new.drop(columns = ["Year","Month","Day"])
+        self.daily_prices = data
+        self.lookback = lookback
 
     def is_rebal_date(self, current_date):
         if current_date in self.sequence_rebal:
@@ -113,7 +176,7 @@ class Backtest:
         else:
             return False
 
-    def simulations(self, typeOpt, robust=False, bayes=False):
+    def simulations(self, typeOpt, robust=False, bayes=False, stock_picking=False):
         self.backtest_start_date = datetime.datetime.now()
         # Do things
         portfolio = ptf.Portfolio()
@@ -121,13 +184,13 @@ class Backtest:
 
         for i, dAy in enumerate(self.dates_series):
             if i == 0:
-                w_star = self.target_weights(dAy, typeOpt, robust, bayes)
+                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking)
                 portfolio.save_current_portfolio(dAy, w_star)
                 strat.append(np.sum(list(portfolio.portfolio_weights.values())))
             elif self.is_rebal_date(dAy):
                 daily_perf = list(portfolio.portfolio_weights.values()) * (1 + self.daily_returns.loc[dAy, portfolio.portfolio_weights.keys()]) - list(portfolio.portfolio_weights.values())
                 strat.append(strat[-1] * (1 + np.sum(daily_perf)))
-                w_star = self.target_weights(dAy, typeOpt, robust, bayes)
+                w_star = self.target_weights(dAy, typeOpt, robust, bayes, stock_picking)
                 portfolio.save_current_portfolio(dAy, w_star)
             else:
                 new_weights = list(portfolio.portfolio_weights.values()) * (1 + self.daily_returns.loc[dAy, portfolio.portfolio_weights.keys()])
@@ -172,7 +235,7 @@ def universe_selection(data, current_date, window, nb_securities):
     for sec in data.columns:
         sec_score = {
             'Security':sec,
-            'Score':float(sub_data[sec].tail(window).rolling(window).apply(momentum, raw=False).dropna().values)
+            'Score':float(sub_data[sec].tail(window).rolling(window).apply(momentum, raw=False).dropna().values.item())
         }
         mom_list.append(sec_score)
     df_scores = pd.DataFrame(mom_list)
