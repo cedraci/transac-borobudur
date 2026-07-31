@@ -64,7 +64,7 @@ def analysis_page() -> None:
 
     with per_asset:
         try:
-            st.dataframe(performance_table(dataset.prices, rf=rf), use_container_width=True)
+            st.dataframe(performance_table(dataset.prices, rf=rf), width="stretch")
         except AnalyticsError as exc:
             st.error(str(exc))
 
@@ -74,37 +74,37 @@ def analysis_page() -> None:
             min_value=dataset.start, max_value=dataset.end,
         )
         try:
-            st.dataframe(rebased_prices(dataset.prices, anchor).tail(20), use_container_width=True)
+            st.dataframe(rebased_prices(dataset.prices, anchor).tail(20), width="stretch")
         except AnalyticsError as exc:
             # Non-trading days are the normal case here, not an error state.
             st.info(str(exc))
 
     with portfolio:
-        st.plotly_chart(nav_figure(nav, f"{dataset.name} - weighted NAV"), use_container_width=True)
+        st.plotly_chart(nav_figure(nav, f"{dataset.name} - weighted NAV"), width="stretch")
 
         try:
-            st.plotly_chart(drawdown_figure(drawdown_series(nav)), use_container_width=True)
+            st.plotly_chart(drawdown_figure(drawdown_series(nav)), width="stretch")
         except AnalyticsError as exc:
             st.error(str(exc))
 
         st.subheader("Worst drawdown episodes")
         top_n = st.slider("How many", min_value=3, max_value=20, value=10)
         try:
-            st.dataframe(drawdown_episodes(nav, top_n=top_n), use_container_width=True)
+            st.dataframe(drawdown_episodes(nav, top_n=top_n), width="stretch")
         except (AnalyticsError, ValueError, KeyError) as exc:
             st.error(f"Could not compute drawdown episodes: {exc}")
 
         st.subheader("Calendar performance")
         try:
             calendar = calendar_table(nav)
-            st.plotly_chart(calendar_bar_figure(calendar), use_container_width=True)
-            st.dataframe(calendar, use_container_width=True)
+            st.plotly_chart(calendar_bar_figure(calendar), width="stretch")
+            st.dataframe(calendar, width="stretch")
         except (AnalyticsError, ValueError, KeyError) as exc:
             st.error(f"Could not compute calendar performance: {exc}")
 
         st.subheader("Monthly returns")
         try:
-            st.dataframe(monthly_returns_table(nav), use_container_width=True)
+            st.dataframe(monthly_returns_table(nav), width="stretch")
         except (AnalyticsError, ValueError, KeyError) as exc:
             st.error(f"Could not compute monthly returns: {exc}")
 
@@ -112,7 +112,7 @@ def analysis_page() -> None:
         horizon = st.slider("Max holding period (years)", 2, 20, 10)
         if st.button("Compute rolling CAGR"):
             try:
-                st.dataframe(rolling_cagr(nav, max_holding_period=horizon), use_container_width=True)
+                st.dataframe(rolling_cagr(nav, max_holding_period=horizon), width="stretch")
             except (AnalyticsError, ValueError, KeyError) as exc:
                 st.error(f"Could not compute rolling CAGR: {exc}")
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from portfolio_ui.analytics import AnalyticsError, weighted_nav
 from portfolio_ui.charts import simulation_fan_figure
 from portfolio_ui.guards import require_active_dataset
 from portfolio_ui.risk import (
@@ -54,7 +55,7 @@ def risk_page() -> None:
                     st.error(str(exc))
                 else:
                     st.dataframe(
-                        table.style.format("{:.2%}"), use_container_width=True
+                        table.style.format("{:.2%}"), width="stretch"
                     )
 
     with simulation:
@@ -78,14 +79,14 @@ def risk_page() -> None:
                             dataset.prices, None, int(n_sims), int(days), distrib
                         )
                     else:
-                        nav = dataset.prices.mean(axis=1)
+                        nav = weighted_nav(dataset.prices)
                         paths = simulate_paths(nav, int(n_sims), int(days), distrib)
-                except (RiskError, ValueError, KeyError) as exc:
+                except (RiskError, AnalyticsError, ValueError, KeyError) as exc:
                     st.error(str(exc))
                 else:
                     st.plotly_chart(
                         simulation_fan_figure(paths, "Simulated forward paths"),
-                        use_container_width=True,
+                        width="stretch",
                     )
                     final = paths.iloc[-1]
                     c1, c2, c3 = st.columns(3)
@@ -116,4 +117,4 @@ def risk_page() -> None:
                     "VaR, stressed", f"{stressed_var:.2%}",
                     delta=f"{stressed_var - base_var:.2%}", delta_color="inverse",
                 )
-                st.dataframe(stressed, use_container_width=True)
+                st.dataframe(stressed, width="stretch")

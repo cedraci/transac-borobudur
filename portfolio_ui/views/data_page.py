@@ -79,7 +79,7 @@ def _point_in_time_tab(source):
             series = source.close_at(tickers, on)
             st.plotly_chart(
                 latest_prices_figure(series, f"Close on {on:%Y-%m-%d}"),
-                use_container_width=True,
+                width="stretch",
             )
             st.dataframe(series.rename("close"))
         except SourceError as exc:
@@ -89,7 +89,7 @@ def _point_in_time_tab(source):
         try:
             series = source.latest(tickers)
             st.plotly_chart(
-                latest_prices_figure(series, "Latest prices"), use_container_width=True
+                latest_prices_figure(series, "Latest prices"), width="stretch"
             )
             st.dataframe(series.rename("close"))
         except SourceError as exc:
@@ -196,5 +196,5 @@ def data_page() -> None:
         meta_cols[3].metric("Annualization", annualization_factor(active.frequency))
 
         rebased = st.checkbox("Rebase to 100", value=False)
-        st.plotly_chart(price_history_figure(active, rebased=rebased), use_container_width=True)
+        st.plotly_chart(price_history_figure(active, rebased=rebased), width="stretch")
         st.dataframe(active.prices.tail(20))
